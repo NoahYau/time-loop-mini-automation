@@ -86,6 +86,8 @@ func _load_art() -> void:
 		"buildings/assembler", "buildings/sink",
 		"buildings/furnace_a", "buildings/furnace_b",
 		"items/ore", "items/ingot", "items/gear", "items/part",
+		"tiles/water_a", "tiles/water_b",
+		"deco/grass", "deco/bush", "deco/rock",
 	]
 	for n in singles:
 		var t := _tex(ART + n + ".png")
@@ -374,10 +376,22 @@ func _draw() -> void:
 	var font := ThemeDB.fallback_font
 	var w = pv.world if (previewing and pv != null) else lm.world
 
-	draw_rect(Rect2(ORIGIN - Vector2(6, 6), Vector2(K.GRID_W * CELL + 12, K.GRID_H * CELL + 12)), Color(0.05, 0.07, 0.09))
+	# --- 海 ---
+	var sea := Rect2(Vector2(0, 0), Vector2(PANEL_X - 14.0, 720))
+	var wkey := "tiles/water_a" if (w.tick / 14) % 2 == 0 else "tiles/water_b"
+	if art.has(wkey):
+		draw_texture_rect(art[wkey], sea, true)
+	else:
+		draw_rect(sea, Color(0.10, 0.18, 0.27))
+
+	# --- 沙灘 + 島邊 ---
+	var beach := Rect2(ORIGIN - Vector2(10, 10), Vector2(K.GRID_W * CELL + 20, K.GRID_H * CELL + 20))
+	draw_rect(beach, Color(0.30, 0.26, 0.18))
+	draw_rect(beach.grow(-4), Color(0.36, 0.31, 0.21))
+	draw_rect(beach.grow(1), Color(0.22, 0.19, 0.14), false, 2.0)
+
 	if art.has("tiles/ground"):
 		draw_texture_rect(art["tiles/ground"], Rect2(ORIGIN, Vector2(K.GRID_W * CELL, K.GRID_H * CELL)), true, Color(1, 1, 1, 0.9))
-	draw_rect(Rect2(ORIGIN - Vector2(3, 3), Vector2(K.GRID_W * CELL + 6, K.GRID_H * CELL + 6)), Color(0.22, 0.30, 0.40, 0.9), false, 2.0)
 	for i in range(0, K.GRID_W + 1, 3):
 		var x := ORIGIN.x + i * CELL
 		var y := ORIGIN.y + i * CELL
@@ -388,6 +402,20 @@ func _draw() -> void:
 	for lane in K.ORE_LANES:
 		draw_rect(Rect2(Vector2(ORIGIN.x, ORIGIN.y + float(lane) * CELL),
 			Vector2(K.GRID_W * CELL, CELL)), Color(0.42, 0.30, 0.16, 0.05))
+
+	# 礦脈軌道底色
+	for lane in K.ORE_LANES:
+		draw_rect(Rect2(Vector2(ORIGIN.x, ORIGIN.y + float(lane) * CELL),
+			Vector2(K.GRID_W * CELL, CELL)), Color(0.55, 0.38, 0.18, 0.10))
+
+	# 地表裝飾（草／灌木／石頭；純視覺，唔阻建造）
+	for cy in range(K.GRID_H):
+		for cx in range(K.GRID_W):
+			var dk := _deco_key(cx, cy)
+			if dk == "" or not art.has(dk):
+				continue
+			var dr := Rect2(ORIGIN + Vector2(cx, cy) * CELL, Vector2(CELL, CELL))
+			draw_texture_rect(art[dk], dr, false, Color(1, 1, 1, 0.95))
 
 	# 礦脈
 	for idx in w.ore:
@@ -568,6 +596,19 @@ func _regen_text() -> String:
 	if t == 0:
 		return "  +1"
 	return "  +1 於 %.1fs" % (float(t) / float(K.SIM_HZ))
+
+## 每格有冇裝飾（固定 hash，重播/預演都一樣）
+func _deco_key(cx: int, cy: int) -> String:
+	var h: int = (cx * 73856093) ^ (cy * 19349663) ^ 530357
+	h = (h ^ (h >> 13)) * 1274126177
+	var v: int = absi(h) % 100
+	if v < 5:
+		return "deco/grass"
+	if v < 7:
+		return "deco/bush"
+	if v < 8:
+		return "deco/rock"
+	return ""
 
 func _quota_text() -> String:
 	var q: int = lm.ghost_quota()

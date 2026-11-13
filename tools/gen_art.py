@@ -215,12 +215,67 @@ def _draw_item(kind):
     return im
 
 
+
+def _draw_water(frame):
+    """20×20 可平鋪海水（2 格動畫）"""
+    im, d = canvas(S, (26, 46, 68, 255))
+    base = (26, 46, 68, 255)
+    wave = (46, 78, 108, 255)
+    foam = (86, 130, 160, 255)
+    d.rectangle([0, 0, 19, 19], fill=base)
+    off = 0 if frame == 0 else 3
+    for (x, y) in ((2, 4), (10, 7), (15, 13), (5, 15)):
+        xx = (x + off) % 20
+        d.line([xx, y, min(xx + 4, 19), y], fill=wave)
+        d.point((min(xx + 1, 19), y - 1), foam)
+    return im
+
+
+def _draw_grass():
+    """透明底草叢，貼喺格底"""
+    im, d = canvas(S)
+    blades = ((4, 17), (10, 18), (15, 17))
+    for (x, y) in blades:
+        d.line([x, y, x, y - 4], fill=(46, 82, 56, 255))
+        d.line([x + 1, y, x + 1, y - 3], fill=(58, 104, 70, 255))
+        d.point((x - 1, y - 3), (70, 126, 84, 255))
+        d.point((x + 2, y - 2), (70, 126, 84, 255))
+    d.line([3, 19, 17, 19], fill=(40, 66, 48, 255))
+    return im
+
+
+def _draw_bush():
+    """透明底灌木"""
+    im, d = canvas(S)
+    d.ellipse([3, 9, 16, 19], fill=(26, 48, 34, 255))
+    d.ellipse([4, 10, 15, 18], fill=(48, 88, 60, 255))
+    d.ellipse([6, 11, 12, 16], fill=(62, 110, 74, 255))
+    d.point((8, 12), (86, 140, 96, 255))
+    d.point((11, 13), (86, 140, 96, 255))
+    return im
+
+
+def _draw_rock():
+    """透明底石頭"""
+    im, d = canvas(S)
+    d.polygon([(3, 19), (2, 14), (6, 10), (13, 10), (17, 14), (16, 19)], fill=(16, 20, 27, 255))
+    d.polygon([(4, 18), (3, 14), (7, 11), (12, 11), (16, 14), (15, 18)], fill=(96, 104, 114, 255))
+    d.polygon([(5, 16), (7, 12), (12, 12), (14, 16)], fill=(122, 132, 144, 255))
+    d.point((8, 13), (150, 160, 172, 255))
+    return im
+
 def gen():
-    for sub in ("tiles", "buildings", "items"):
+    for sub in ("tiles", "buildings", "items", "deco"):
         (ART / sub).mkdir(parents=True, exist_ok=True)
 
     _draw_ground().save(ART / "tiles" / "ground.png")
     _draw_ore().save(ART / "tiles" / "ore.png")
+    _draw_water(0).save(ART / "tiles" / "water_a.png")
+    _draw_water(1).save(ART / "tiles" / "water_b.png")
+    (ART / "deco").mkdir(parents=True, exist_ok=True)
+    _draw_grass().save(ART / "deco" / "grass.png")
+    _draw_bush().save(ART / "deco" / "bush.png")
+    _draw_rock().save(ART / "deco" / "rock.png")
     _draw_miner().save(ART / "buildings" / "miner.png")
     _draw_gear().save(ART / "buildings" / "gear.png")
     _draw_assembler().save(ART / "buildings" / "assembler.png")
