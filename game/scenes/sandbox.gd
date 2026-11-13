@@ -51,6 +51,9 @@ var loops_used: int = 0
 
 var mouse_pos: Vector2 = Vector2(-1, -1)   # 由事件追蹤嘅鼠標位置（同點擊同一座標系）
 var debug_clicks: Array = []      # 最近收到嘅點擊（除錯用）
+var restart_armed: bool = false
+var restart_arm_timer: float = 0.0
+const RESTART_CONFIRM_SEC := 2.0
 var toast: String = ""
 var toast_timer: float = 0.0
 var fast_forward: bool = false
@@ -69,6 +72,10 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	if toast_timer > 0.0:
 		toast_timer -= delta
+	if restart_arm_timer > 0.0:
+		restart_arm_timer -= delta
+		if restart_arm_timer <= 0.0:
+			restart_armed = false
 	# 鼠標喺建築選單上面 -> 手指（提示可以點）
 	var over_ui: bool = _palette_index_at(mouse_pos) >= 0
 	if phase == P.RUN and _end_loop_rect().has_point(mouse_pos):
@@ -158,6 +165,8 @@ func _restart() -> void:
 	fast_forward = false
 	paused = false
 	started = true
+	restart_armed = false
+	restart_arm_timer = 0.0
 	toast = "已重來 — 由 LOOP 1 開始"
 	toast_timer = 1.6
 
@@ -238,7 +247,15 @@ func _unhandled_input(e: InputEvent) -> void:
 				if phase == P.RUN:
 					paused = not paused
 			KEY_R:
-				_restart()
+				if phase == P.WIN or phase == P.LOSE:
+					_restart()
+				elif restart_armed and restart_arm_timer > 0.0:
+					_restart()
+				else:
+					restart_armed = true
+					restart_arm_timer = RESTART_CONFIRM_SEC
+					toast = "再按一次 R 確認重來（2 秒內）"
+					toast_timer = RESTART_CONFIRM_SEC
 			KEY_D:
 				debug_demo_build()
 
@@ -536,7 +553,7 @@ func _draw_hud(font: Font) -> void:
 		["點選單或用 1–6 選建築", 13, Color(1, 1, 1, 0.55)],
 		["滾輪切換建築   [Q/E] 轉向", 13, Color(1, 1, 1, 0.55)],
 		["左鍵放  右鍵拆", 13, Color(1, 1, 1, 0.55)],
-		["[SHIFT] 預演  [SPACE] 暫停  [ENTER] 快進  [R] 重來", 12, Color(1, 1, 1, 0.55)],
+		["[SHIFT] 預演  [SPACE] 暫停  [ENTER] 快進  [R] 重來×2", 12, Color(1, 1, 1, 0.55)],
 		["拆自己會退 AP；拆幽靈要 2 AP", 11, Color(1, 1, 1, 0.4)],
 	]
 	for line in lines:
