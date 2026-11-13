@@ -1,7 +1,7 @@
 extends Node2D
 ## S2 可玩切片：滑鼠建造 + 時間軸預演 + 幽靈工作報告。
 ##
-## 操作：點建築選單 / 按 1–6 / 滾輪 選建築，Q/E 轉向，左鍵放、右鍵拆。
+## 操作：點建築選單 / 按 1–6 / 滾輪 選建築；Q/E 轉向（滑鼠指住已放嘅建築 = 就地旋轉）；左鍵放、右鍵拆。
 ##       按住 SHIFT = 時間停止 + 拖時間軸預演（呢個係可讀性生死線）。
 ##       SPACE 暫停，D = 自動示範一條線（debug），R 重來（完場後）。
 
@@ -289,8 +289,8 @@ func _unhandled_input(e: InputEvent) -> void:
 			KEY_4: selected = K.T_GEAR
 			KEY_5: selected = K.T_ASSEMBLER
 			KEY_6: selected = K.T_SINK
-			KEY_Q: place_dir = (place_dir + 3) % 4
-			KEY_E: place_dir = (place_dir + 1) % 4
+			KEY_Q: _rotate_action(-1)
+			KEY_E: _rotate_action(1)
 			KEY_SPACE:
 				if phase == P.RUN:
 					paused = not paused
@@ -328,6 +328,25 @@ func _set_preview(t: int) -> void:
 		pv.preview_at(pv_tick)
 
 # ---------------------------------------------------------------- 建造
+
+## Q/E：滑鼠指着已放置嘅建築就轉佢，否則轉放落去嘅方向
+func _rotate_action(step: int) -> void:
+	if hover != Vector2i(-1, -1):
+		var b = lm.world.building_at(hover)
+		if b != null:
+			_try_rotate(hover, (int(b.dir) + step + 4) % 4)
+			return
+	place_dir = (place_dir + step + 4) % 4
+
+func _try_rotate(cell: Vector2i, dir: int) -> void:
+	if phase != P.RUN:
+		return
+	if busy > 0 or not lm.can_rotate(cell):
+		deny[lm.world.idx_of(cell)] = 0.3
+		return
+	if lm.submit_rotate(cell, dir):
+		flash[lm.world.idx_of(cell)] = 0.35
+		busy = BUILD_TICKS
 
 func _try_place(cell: Vector2i) -> void:
 	if cell == Vector2i(-1, -1) or phase != P.RUN:
@@ -531,6 +550,18 @@ func _draw_hover() -> void:
 	if hover == Vector2i(-1, -1) or phase != P.RUN:
 		return
 	var r := Rect2(ORIGIN + Vector2(hover) * CELL, Vector2(CELL, CELL)).grow(-1.2)
+	# 指住已放置嘅建築 -> 顯示「可以就地轉向」
+	var hb = lm.world.building_at(hover)
+	if hb != null:
+		draw_rect(r, Color(1, 1, 1, 0.05))
+		draw_rect(r, Color(0.55, 0.85, 1.0, 0.55), false, 1.5)
+		var rcost: int = lm.rotate_cost(hover)
+		var txt := "Q/E 轉向（免費）" if rcost == 0 else "Q/E 轉向（%d AP）" % rcost
+		draw_string(ThemeDB.fallback_font, Vector2(r.position.x - 4, r.position.y - 6), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.7, 0.95, 1.0))
+		var ctr := r.get_center()
+		var dd: Vector2 = K.DIR_VEC[hb.dir]
+		draw_line(ctr, ctr + dd * (CELL * 0.32), Color(0.7, 0.95, 1.0, 0.9), 2.0)
+		return
 	var ok: bool = lm.can_build(hover, selected) and busy <= 0
 	draw_rect(r, Color(0.4, 1.0, 0.5, 0.22) if ok else Color(1, 0.35, 0.35, 0.22))
 	draw_rect(r, Color(0.5, 1.0, 0.6, 0.8) if ok else Color(1, 0.4, 0.4, 0.8), false, 1.0)
@@ -666,7 +697,7 @@ func _draw_hud(font: Font) -> void:
 		["", 10, Color.WHITE],
 		["[1]礦 [2]帶 [3]爐 [4]齒 [5]組 [6]出口", 14, Color(1, 1, 1, 0.55)],
 		["點選單或用 1–6 選建築", 15, Color(1, 1, 1, 0.55)],
-		["滾輪切換建築   [Q/E] 轉向", 15, Color(1, 1, 1, 0.55)],
+		["滾輪切換建築   [Q/E] 轉向（指住已放嘅建築 = 就地改）", 13, Color(1, 1, 1, 0.55)],
 		["左鍵放  右鍵拆", 15, Color(1, 1, 1, 0.55)],
 		["[SHIFT] 預演  [SPACE] 暫停  [ENTER] 快進  [R] 重來×2", 13, Color(1, 1, 1, 0.55)],
 		["拆自己會退 AP；拆幽靈要 2 AP", 13, Color(1, 1, 1, 0.4)],

@@ -154,6 +154,10 @@ func _pending_ap() -> int:
 		var cmd: Dictionary = current_log[i]
 		if int(cmd["k"]) == K.C_BUILD:
 			total += K.AP_COST_BUILD
+		elif int(cmd["k"]) == K.C_ROTATE:
+			var cb = world.building_at(Vector2i(int(cmd["x"]), int(cmd["y"])))
+			if cb != null and cb.origin != loop_index:
+				total += K.AP_COST_ROTATE_GHOST
 		else:
 			total += demolish_net_cost(Vector2i(int(cmd["x"]), int(cmd["y"])))
 		i += 1
@@ -206,6 +210,24 @@ func submit_build(cell: Vector2i, type: int, dir: int) -> bool:
 	current_log.append({"t": world.tick + 1, "k": K.C_BUILD, "x": cell.x, "y": cell.y, "type": type, "dir": dir})
 	return true
 
+func rotate_cost(cell: Vector2i) -> int:
+	var b = world.building_at(cell)
+	if b == null:
+		return 0
+	return 0 if b.origin == loop_index else K.AP_COST_ROTATE_GHOST
+
+func can_rotate(cell: Vector2i) -> bool:
+	if world.building_at(cell) == null:
+		return false
+	return ap_available() >= rotate_cost(cell)
+
+## 就地改方向（唔使拆）。自己嘅免費，幽靈嘅 2 AP。
+func submit_rotate(cell: Vector2i, dir: int) -> bool:
+	if not can_rotate(cell):
+		return false
+	current_log.append({"t": world.tick + 1, "k": K.C_ROTATE, "x": cell.x, "y": cell.y, "dir": dir})
+	return true
+
 func submit_demolish(cell: Vector2i) -> bool:
 	if not can_demolish(cell):
 		return false
@@ -252,6 +274,20 @@ func _apply(cmd: Dictionary, ap_slot: int, origin_loop: int) -> bool:
 			return false
 		world.build(idx, int(cmd["type"]), int(cmd["dir"]), origin_loop)
 		_ap[ap_slot] = ap - K.AP_COST_BUILD
+		return true
+	if int(cmd["k"]) == K.C_ROTATE:
+		var rb = world.buildings.get(idx, null)
+		if rb == null:
+			if is_player:
+				rejected.append({"x": cell.x, "y": cell.y, "t": world.tick + 1, "why": "格已空"})
+			return false
+		var rcost: int = 0 if rb.origin == origin_loop else K.AP_COST_ROTATE_GHOST
+		if ap < rcost:
+			if is_player:
+				rejected.append({"x": cell.x, "y": cell.y, "t": world.tick + 1, "why": "AP不足"})
+			return false
+		rb.dir = int(cmd["dir"])
+		_ap[ap_slot] = ap - rcost
 		return true
 	if not world.buildings.has(idx):
 		if is_player:

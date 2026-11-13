@@ -58,6 +58,7 @@ func _initialize() -> void:
 	_test_ghost_selection()
 	_test_cell_conflict()
 	_test_ap_regen()
+	_test_rotate()
 	print("----------------------------------")
 	print("RESULT: %s (%d failures)" % ["PASS" if failures == 0 else "FAIL", failures])
 	quit(0 if failures == 0 else 1)
@@ -580,3 +581,70 @@ func _test_ap_regen() -> void:
 	_check("有 AP 回復之下，重播逐 tick 一致", d_live == d_replay)
 	_check("回復後真係建到額外建築", int(live.world.buildings.size()) >= 10,
 		"buildings=%d" % live.world.buildings.size())
+# ---------------------------------------------------------------- T16
+
+func _test_rotate() -> void:
+	print("[T16] 就地方向旋轉（唔使拆）")
+	var cell := Vector2i(K.ORE_X, int(K.ORE_LANES[0]))
+
+	# 1) 自己嘅建築：免費
+	var a = _new_manager()
+	a.start_level()
+	a.submit_build(cell, K.T_MINER, K.D_E)
+	a.step()
+	var ap0: int = a.ap_left()
+	var ok_a: bool = a.submit_rotate(cell, K.D_S)
+	a.step()
+	_check("自己嘅可免費轉向", ok_a and int(a.world.building_at(cell).dir) == K.D_S and a.ap_left() == ap0,
+		"ok=%s dir=%d ap=%d" % [ok_a, int(a.world.building_at(cell).dir), a.ap_left()])
+	_check("空格唔可以轉", not a.can_rotate(Vector2i(9, 9)))
+
+	# 2) 幽靈嘅建築：2 AP
+	var b = _new_manager()
+	b.start_level()
+	b.submit_build(cell, K.T_MINER, K.D_E)
+	b.step()
+	var log_a: Array = b.current_log.duplicate(true)
+	b.add_ghost(log_a)
+	b.begin_loop(1)
+	b.step()
+	var ap_b0: int = b.ap_left()
+	var ok_b: bool = b.submit_rotate(cell, K.D_S)
+	b.step()
+	_check("轉幽靈嘅建築要 2 AP",
+		ok_b and int(b.world.building_at(cell).dir) == K.D_S
+			and b.ap_left() == ap_b0 - K.AP_COST_ROTATE_GHOST,
+		"ok=%s ap=%d dir=%d" % [ok_b, b.ap_left(), int(b.world.building_at(cell).dir)])
+
+	# 3) 有 rotate 嘅 log 一樣重播得一致
+	var live = _new_manager()
+	live.start_level()
+	var d_live: Array = []
+	var i := 0
+	var script: Array = [
+		{"t": 0, "k": K.C_BUILD, "x": K.ORE_X, "y": int(K.ORE_LANES[0]), "type": K.T_MINER, "dir": K.D_E},
+		{"t": 20, "k": K.C_ROTATE, "x": K.ORE_X, "y": int(K.ORE_LANES[0]), "dir": K.D_S},
+		{"t": 40, "k": K.C_BUILD, "x": K.ORE_X + 1, "y": int(K.ORE_LANES[0]), "type": K.T_BELT, "dir": K.D_N},
+		{"t": 60, "k": K.C_ROTATE, "x": K.ORE_X + 1, "y": int(K.ORE_LANES[0]), "dir": K.D_E},
+	]
+	for tick in range(K.LOOP_TICKS):
+		while i < script.size() and int(script[i]["t"]) <= live.world.tick:
+			var s: Dictionary = script[i]
+			var c := Vector2i(s["x"], s["y"])
+			if int(s["k"]) == K.C_BUILD:
+				live.submit_build(c, s["type"], s["dir"])
+			else:
+				live.submit_rotate(c, s["dir"])
+			i += 1
+		live.step()
+		d_live.append(live.world.digest())
+
+	var replay = _new_manager()
+	replay.start_level()
+	replay.add_ghost(live.current_log.duplicate(true))
+	replay.begin_loop(1)
+	var d_replay: Array = []
+	for tick in range(K.LOOP_TICKS):
+		replay.step()
+		d_replay.append(replay.world.digest())
+	_check("有旋轉命令都重播一致", d_live == d_replay)
