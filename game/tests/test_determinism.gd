@@ -56,6 +56,7 @@ func _initialize() -> void:
 	_test_ore_rule()
 	_test_ap_refund()
 	_test_ghost_selection()
+	_test_cell_conflict()
 	print("----------------------------------")
 	print("RESULT: %s (%d failures)" % ["PASS" if failures == 0 else "FAIL", failures])
 	quit(0 if failures == 0 else 1)
@@ -452,3 +453,70 @@ func _test_ghost_selection() -> void:
 	lm_c.active = [0]
 	_check("上限 1 時唔可以再加人", not lm_c.toggle_ghost(1, 1) and lm_c.active == [0],
 		"active=%s" % str(lm_c.active))
+# ---------------------------------------------------------------- T14
+
+## 玩家同幽靈搶同一格：4 種情況
+func _test_cell_conflict() -> void:
+	print("[T14] 玩家同幽靈搶同一格")
+	var cell := Vector2i(10, 3)
+	var ghost_log: Array = [{"t": 5, "k": K.C_BUILD, "x": cell.x, "y": cell.y, "type": K.T_BELT, "dir": K.D_E}]
+
+	# A) 幽靈已經建好
+	var a = _new_manager()
+	a.start_level()
+	a.add_ghost(ghost_log)
+	a.begin_loop(1)
+	while a.world.tick < 10:
+		a.step()
+	var ap_a0: int = a.ap_left()
+	var ok_a: bool = a.submit_build(cell, K.T_GEAR, K.D_E)
+	a.step()
+	_check("A 幽靈已佔住 -> 玩家被拒、唔扣 AP",
+		(not ok_a) and a.ap_left() == ap_a0 and int(a.world.building_at(cell).type) == K.T_BELT,
+		"ok=%s ap=%d type=%d" % [ok_a, a.ap_left(), int(a.world.building_at(cell).type)])
+
+	# B) 玩家先建，幽靈遲啲嚟
+	var b = _new_manager()
+	b.start_level()
+	b.add_ghost(ghost_log)
+	b.begin_loop(1)
+	var ok_b: bool = b.submit_build(cell, K.T_GEAR, K.D_E)
+	while b.world.tick < 10:
+		b.step()
+	_check("B 玩家先 -> 玩家嘅建築留低，幽靈靜靜雞失敗",
+		ok_b and int(b.world.building_at(cell).type) == K.T_GEAR,
+		"type=%d" % int(b.world.building_at(cell).type))
+
+	# C) 同一個 tick：幽靈先套用 -> 玩家失敗（但要有 rejected 紀錄畀 UI 閃紅）
+	var c = _new_manager()
+	c.start_level()
+	c.add_ghost(ghost_log)
+	c.begin_loop(1)
+	while c.world.tick < 4:
+		c.step()
+	var ap_c0: int = c.ap_left()
+	var ok_c: bool = c.submit_build(cell, K.T_GEAR, K.D_E)
+	var rej := 0
+	for i in range(4):
+		c.step()
+		rej += c.rejected.size()
+	_check("C 同 tick -> 幽靈贏、玩家唔扣 AP", int(c.world.building_at(cell).type) == K.T_BELT and c.ap_left() == ap_c0,
+		"type=%d ap=%d" % [int(c.world.building_at(cell).type), c.ap_left()])
+	_check("C 玩家失敗有記錄（畀 UI 閃紅）", rej > 0, "rejected=%d" % rej)
+
+	# D) 拆幽靈建築再重建
+	var d = _new_manager()
+	d.start_level()
+	d.add_ghost(ghost_log)
+	d.begin_loop(1)
+	while d.world.tick < 10:
+		d.step()
+	var ap_d0: int = d.ap_left()
+	d.submit_demolish(cell)
+	d.step()
+	var ok_dr: bool = d.submit_build(cell, K.T_GEAR, K.D_E)
+	d.step()
+	_check("D 拆幽靈 -2 AP，之後可以重建",
+		ok_dr and d.ap_left() == ap_d0 - K.AP_COST_DEMOLISH_GHOST - K.AP_COST_BUILD
+			and int(d.world.building_at(cell).type) == K.T_GEAR,
+		"ap=%d type=%d" % [d.ap_left(), int(d.world.building_at(cell).type)])

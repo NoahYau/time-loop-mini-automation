@@ -100,6 +100,7 @@ func _process(delta: float) -> void:
 		guard += 1
 		acc -= step_dt
 		lm.step()
+		_drain_rejected()
 		if busy > 0:
 			busy -= 1
 		_tick_fx(step_dt)
@@ -110,6 +111,15 @@ func _process(delta: float) -> void:
 			_end_loop(false)
 			break
 	queue_redraw()
+
+## 玩家命令喺執行時被拒（例如同一 tick 撞到幽靈）-> 紅閃，唔好靜靜雞食咗
+func _drain_rejected() -> void:
+	if lm.rejected.is_empty():
+		return
+	for r in lm.rejected:
+		var idx: int = lm.world.idx_of(Vector2i(int(r["x"]), int(r["y"])))
+		deny[idx] = 0.5
+	lm.rejected.clear()
 
 func _tick_fx(dt: float) -> void:
 	for k in flash.keys():

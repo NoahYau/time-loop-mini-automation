@@ -37,6 +37,8 @@ var _cursor: Dictionary = {}  # AP key -> log 讀到邊
 var _pkey: int = 0            # 玩家喺 _ap / _cursor 用嘅 key（預演時係 pseudo）
 var _preview: bool = false
 var _marks: Array = []
+## 玩家命令被拒嘅紀錄（tick, x, y, 原因）。畀 UI 做紅閃回饋，逐個 frame 清空。
+var rejected: Array = []
 
 func _init() -> void:
 	world = SimWorld.new()
@@ -57,6 +59,7 @@ func begin_loop(n: int) -> void:
 	_pkey = n
 	_ap.clear()
 	_cursor.clear()
+	rejected.clear()
 	for i in range(ghosts.size() + 1):
 		_ap[i] = K.AP_MAX
 		_cursor[i] = 0
@@ -225,13 +228,22 @@ func _apply(cmd: Dictionary, ap_slot: int, origin_loop: int) -> bool:
 		return false
 	var idx := world.idx_of(cell)
 	var ap: int = _ap.get(ap_slot, 0)
+	var is_player: bool = ap_slot == _pkey
 	if int(cmd["k"]) == K.C_BUILD:
-		if not world.can_place(cell, int(cmd["type"])) or ap < K.AP_COST_BUILD:
+		if not world.can_place(cell, int(cmd["type"])):
+			if is_player:
+				rejected.append({"x": cell.x, "y": cell.y, "t": world.tick + 1, "why": "格已被佔用"})
+			return false
+		if ap < K.AP_COST_BUILD:
+			if is_player:
+				rejected.append({"x": cell.x, "y": cell.y, "t": world.tick + 1, "why": "AP不足"})
 			return false
 		world.build(idx, int(cmd["type"]), int(cmd["dir"]), origin_loop)
 		_ap[ap_slot] = ap - K.AP_COST_BUILD
 		return true
 	if not world.buildings.has(idx):
+		if is_player:
+			rejected.append({"x": cell.x, "y": cell.y, "t": world.tick + 1, "why": "格已空"})
 		return false
 	var b = world.buildings[idx]
 	var mine: bool = b.origin == origin_loop
@@ -239,6 +251,8 @@ func _apply(cmd: Dictionary, ap_slot: int, origin_loop: int) -> bool:
 	var net: int = 0 if mine else K.AP_COST_DEMOLISH_GHOST
 	var refund: int = K.AP_REFUND_DEMOLISH_OWN if mine else 0
 	if ap < net:
+		if is_player:
+			rejected.append({"x": cell.x, "y": cell.y, "t": world.tick + 1, "why": "AP不足"})
 		return false
 	world.demolish(idx)
 	# 退款唔可以令 AP 超過上限（防止「起-拆-起」刷 AP）
