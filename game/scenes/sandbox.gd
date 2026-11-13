@@ -358,9 +358,9 @@ func debug_demo_build() -> void:
 ## 共 10 件建築，60 秒約 15 件零件。
 func debug_build_line(y: int) -> int:
 	var line := [
-		[4, K.T_MINER], [5, K.T_BELT], [6, K.T_BELT], [7, K.T_FURNACE],
-		[8, K.T_BELT], [9, K.T_GEAR], [10, K.T_BELT], [11, K.T_ASSEMBLER],
-		[12, K.T_BELT], [13, K.T_SINK],
+		[3, K.T_MINER], [4, K.T_BELT], [5, K.T_BELT], [6, K.T_FURNACE],
+		[7, K.T_BELT], [8, K.T_GEAR], [9, K.T_BELT], [10, K.T_ASSEMBLER],
+		[11, K.T_BELT], [12, K.T_SINK],
 	]
 	var ok := 0
 	for item in line:

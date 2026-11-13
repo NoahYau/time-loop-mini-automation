@@ -4,8 +4,8 @@ const LoopManager = preload("res://sim/loop_manager.gd")
 
 func _line_cells() -> Array:
 	return [
-		[4, K.T_MINER], [5, K.T_BELT], [6, K.T_FURNACE], [7, K.T_BELT],
-		[8, K.T_GEAR], [9, K.T_BELT], [10, K.T_ASSEMBLER], [11, K.T_BELT], [12, K.T_SINK],
+		[3, K.T_MINER], [4, K.T_BELT], [5, K.T_FURNACE], [6, K.T_BELT],
+		[7, K.T_GEAR], [8, K.T_BELT], [9, K.T_ASSEMBLER], [10, K.T_BELT], [11, K.T_SINK],
 	]
 
 func _initialize() -> void:

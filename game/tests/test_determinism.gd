@@ -16,29 +16,29 @@ const LoopManager = preload("res://sim/loop_manager.gd")
 var failures: int = 0
 
 var SCRIPT_A: Array = [
-	{"t": 0, "k": K.C_BUILD, "x": 4, "y": 3, "type": K.T_MINER, "dir": K.D_E},
-	{"t": 2, "k": K.C_BUILD, "x": 5, "y": 3, "type": K.T_BELT, "dir": K.D_E},
-	{"t": 4, "k": K.C_BUILD, "x": 6, "y": 3, "type": K.T_BELT, "dir": K.D_E},
-	{"t": 6, "k": K.C_BUILD, "x": 7, "y": 3, "type": K.T_FURNACE, "dir": K.D_E},
-	{"t": 8, "k": K.C_BUILD, "x": 8, "y": 3, "type": K.T_BELT, "dir": K.D_E},
-	{"t": 10, "k": K.C_BUILD, "x": 9, "y": 3, "type": K.T_GEAR, "dir": K.D_E},
-	{"t": 12, "k": K.C_BUILD, "x": 10, "y": 3, "type": K.T_BELT, "dir": K.D_E},
-	{"t": 14, "k": K.C_BUILD, "x": 11, "y": 3, "type": K.T_ASSEMBLER, "dir": K.D_E},
-	{"t": 16, "k": K.C_BUILD, "x": 12, "y": 3, "type": K.T_BELT, "dir": K.D_E},
-	{"t": 18, "k": K.C_BUILD, "x": 13, "y": 3, "type": K.T_SINK, "dir": K.D_E},
+	{"t": 0, "k": K.C_BUILD, "x": 3, "y": 2, "type": K.T_MINER, "dir": K.D_E},
+	{"t": 2, "k": K.C_BUILD, "x": 4, "y": 2, "type": K.T_BELT, "dir": K.D_E},
+	{"t": 4, "k": K.C_BUILD, "x": 5, "y": 2, "type": K.T_BELT, "dir": K.D_E},
+	{"t": 6, "k": K.C_BUILD, "x": 6, "y": 2, "type": K.T_FURNACE, "dir": K.D_E},
+	{"t": 8, "k": K.C_BUILD, "x": 7, "y": 2, "type": K.T_BELT, "dir": K.D_E},
+	{"t": 10, "k": K.C_BUILD, "x": 8, "y": 2, "type": K.T_GEAR, "dir": K.D_E},
+	{"t": 12, "k": K.C_BUILD, "x": 9, "y": 2, "type": K.T_BELT, "dir": K.D_E},
+	{"t": 14, "k": K.C_BUILD, "x": 10, "y": 2, "type": K.T_ASSEMBLER, "dir": K.D_E},
+	{"t": 16, "k": K.C_BUILD, "x": 11, "y": 2, "type": K.T_BELT, "dir": K.D_E},
+	{"t": 18, "k": K.C_BUILD, "x": 12, "y": 2, "type": K.T_SINK, "dir": K.D_E},
 ]
 
 var SCRIPT_B: Array = [
-	{"t": 0, "k": K.C_BUILD, "x": 4, "y": 9, "type": K.T_MINER, "dir": K.D_E},
-	{"t": 2, "k": K.C_BUILD, "x": 5, "y": 9, "type": K.T_BELT, "dir": K.D_E},
-	{"t": 4, "k": K.C_BUILD, "x": 6, "y": 9, "type": K.T_BELT, "dir": K.D_E},
-	{"t": 6, "k": K.C_BUILD, "x": 7, "y": 9, "type": K.T_FURNACE, "dir": K.D_E},
-	{"t": 8, "k": K.C_BUILD, "x": 8, "y": 9, "type": K.T_BELT, "dir": K.D_E},
-	{"t": 10, "k": K.C_BUILD, "x": 9, "y": 9, "type": K.T_GEAR, "dir": K.D_E},
-	{"t": 12, "k": K.C_BUILD, "x": 10, "y": 9, "type": K.T_BELT, "dir": K.D_E},
-	{"t": 14, "k": K.C_BUILD, "x": 11, "y": 9, "type": K.T_ASSEMBLER, "dir": K.D_E},
-	{"t": 16, "k": K.C_BUILD, "x": 12, "y": 9, "type": K.T_BELT, "dir": K.D_E},
-	{"t": 18, "k": K.C_BUILD, "x": 13, "y": 9, "type": K.T_SINK, "dir": K.D_E},
+	{"t": 0, "k": K.C_BUILD, "x": 3, "y": 8, "type": K.T_MINER, "dir": K.D_E},
+	{"t": 2, "k": K.C_BUILD, "x": 4, "y": 8, "type": K.T_BELT, "dir": K.D_E},
+	{"t": 4, "k": K.C_BUILD, "x": 5, "y": 8, "type": K.T_BELT, "dir": K.D_E},
+	{"t": 6, "k": K.C_BUILD, "x": 6, "y": 8, "type": K.T_FURNACE, "dir": K.D_E},
+	{"t": 8, "k": K.C_BUILD, "x": 7, "y": 8, "type": K.T_BELT, "dir": K.D_E},
+	{"t": 10, "k": K.C_BUILD, "x": 8, "y": 8, "type": K.T_GEAR, "dir": K.D_E},
+	{"t": 12, "k": K.C_BUILD, "x": 9, "y": 8, "type": K.T_BELT, "dir": K.D_E},
+	{"t": 14, "k": K.C_BUILD, "x": 10, "y": 8, "type": K.T_ASSEMBLER, "dir": K.D_E},
+	{"t": 16, "k": K.C_BUILD, "x": 11, "y": 8, "type": K.T_BELT, "dir": K.D_E},
+	{"t": 18, "k": K.C_BUILD, "x": 12, "y": 8, "type": K.T_SINK, "dir": K.D_E},
 ]
 
 func _initialize() -> void:
@@ -299,9 +299,9 @@ func _test_preview_isolation() -> void:
 ## 12 AP 只夠鋪 1 條線，所以每個 loop 增長 1 條。
 func _lane_line(y: int) -> Array:
 	var q := [
-		[4, K.T_MINER], [5, K.T_BELT], [6, K.T_BELT], [7, K.T_FURNACE],
-		[8, K.T_BELT], [9, K.T_GEAR], [10, K.T_BELT], [11, K.T_ASSEMBLER],
-		[12, K.T_BELT], [13, K.T_SINK],
+		[3, K.T_MINER], [4, K.T_BELT], [5, K.T_BELT], [6, K.T_FURNACE],
+		[7, K.T_BELT], [8, K.T_GEAR], [9, K.T_BELT], [10, K.T_ASSEMBLER],
+		[11, K.T_BELT], [12, K.T_SINK],
 	]
 	var out: Array = []
 	for i in range(q.size()):
@@ -559,7 +559,7 @@ func _test_ap_regen() -> void:
 	for x in range(10):
 		script.append({"t": x * 15, "k": K.C_BUILD, "x": 4 + x, "y": 3, "type": K.T_BELT, "dir": K.D_E})
 	# 遲啲（回咗 AP 之後）再建一個
-	script.append({"t": 700, "k": K.C_BUILD, "x": 20, "y": 3, "type": K.T_BELT, "dir": K.D_E})
+	script.append({"t": 700, "k": K.C_BUILD, "x": 19, "y": 2, "type": K.T_BELT, "dir": K.D_E})
 	for tick in range(K.LOOP_TICKS):
 		while i < script.size() and int(script[i]["t"]) <= live.world.tick:
 			var s: Dictionary = script[i]

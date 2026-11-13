@@ -47,9 +47,9 @@ const ITEM_GEAR: int = 2
 const ITEM_PART: int = 3
 
 # --- 礦脈（B 規則）：礦機只可以擺喺礦脈上，每條礦脈一行 ---
-const ORE_X: int = 4
+const ORE_X: int = 3
 # 5 條礦脈，間距 3 格（16 行棋盤）
-const ORE_LANES: Array = [3, 6, 9, 12, 15]
+const ORE_LANES: Array = [2, 5, 8, 11, 14]
 
 # --- 幽靈上限 ---
 # 0 = 唔封頂。本作真正嘅上限係地圖：7 條礦脈 = 最多 7 條產線。
