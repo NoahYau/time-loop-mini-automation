@@ -8,21 +8,21 @@ extends Node2D
 const K = preload("res://sim/constants.gd")
 const LoopManager = preload("res://sim/loop_manager.gd")
 
-const CELL := 20.0
-const ORIGIN := Vector2(26, 30)
+const CELL := 40.0
+const ORIGIN := Vector2(20, 16)
 const BUILD_TICKS: int = K.BUILD_TICKS
-const TL_Y := 512.0                # 時間軸
-const TL_H := 16.0
-const PANEL_X := 526.0
-const PALETTE_Y := 330.0           # 建築選單頂部
-const PALETTE_BTN := Vector2(84, 44)
+const TL_Y := 664.0                # 時間軸
+const TL_H := 18.0
+const PANEL_X := 700.0
+const PALETTE_Y := 392.0           # 建築選單頂部
+const PALETTE_BTN := Vector2(104, 58)
 const PALETTE_GAP := 6.0
 const PALETTE_COLS := 3            # 1/2/3 一行，4/5/6 下一行
 
 # 結算／規劃面板
-const REPORT_X := 514.0
-const REPORT_Y := 200.0
-const REPORT_W := 434.0
+const REPORT_X := 700.0
+const REPORT_Y := 268.0
+const REPORT_W := 552.0
 const REPORT_ROWS_Y := 78.0
 const REPORT_ROW_H := 21.0
 const PALETTE_TYPES: Array = [1, 2, 3, 4, 5, 6]   # 同 constants.gd 嘅 T_* 一致
@@ -493,11 +493,11 @@ func _draw_palette(font: Font) -> void:
 		draw_rect(r, border, false, 1.0)
 		var skey := _slot_tex(t)
 		if art.has(skey):
-			draw_texture_rect(art[skey], Rect2(r.position + Vector2(4, 6), Vector2(16, 16)), false)
+			draw_texture_rect(art[skey], Rect2(r.position + Vector2(4, 6), Vector2(20, 20)), false)
 		else:
 			draw_rect(Rect2(r.position + Vector2(5, 7), Vector2(14, 14)), _color_for(t))
-		draw_string(font, Vector2(r.position.x + 23, r.position.y + 19), names[t], HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(1, 1, 1, 0.9))
-		draw_string(font, Vector2(r.position.x + 5, r.position.y + 38), "[%d]" % (i + 1), HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color(1, 1, 1, 0.45))
+		draw_string(font, Vector2(r.position.x + 26, r.position.y + 22), names[t], HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(1, 1, 1, 0.92))
+		draw_string(font, Vector2(r.position.x + 6, r.position.y + 46), "[%d]" % (i + 1), HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(1, 1, 1, 0.45))
 
 func _draw_hover() -> void:
 	if hover == Vector2i(-1, -1) or phase != P.RUN:
@@ -605,8 +605,7 @@ func _draw_timeline(font: Font) -> void:
 	var frac := float(cur) / float(K.LOOP_TICKS)
 	draw_rect(Rect2(Vector2(x0, TL_Y), Vector2(wpx * frac, TL_H)), Color(0.35, 0.65, 0.95, 0.25))
 	draw_line(Vector2(x0 + wpx * frac, TL_Y - 3), Vector2(x0 + wpx * frac, TL_Y + TL_H + 3), Color(0.7, 0.9, 1.0), 2.0)
-	draw_string(font, Vector2(x0, TL_Y - 6), "SHIFT 拖時間軸預演", HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(1, 1, 1, 0.35))
-	draw_string(font, Vector2(x0 + wpx, TL_Y - 6), "%.0fs" % (float(K.LOOP_TICKS) / K.SIM_HZ), HORIZONTAL_ALIGNMENT_RIGHT, -1, 11, Color(1, 1, 1, 0.35))
+	draw_string(font, Vector2(x0 + wpx - 4, TL_Y + 14), "%.0fs" % (float(K.LOOP_TICKS) / K.SIM_HZ), HORIZONTAL_ALIGNMENT_RIGHT, -1, 11, Color(1, 1, 1, 0.35))
 
 func _draw_hud(font: Font) -> void:
 	var x := PANEL_X
@@ -616,20 +615,21 @@ func _draw_hud(font: Font) -> void:
 	# 預演時 HUD 必須顯示「預演世界」嘅數字，唔係真實世界（否則預覽係假嘅）
 	var shown = pv.world if (previewing and pv != null) else lm.world
 	var lines: Array = [
-		["TIME LOOP AUTOMATION", 16, Color(0.85, 0.9, 1.0)],
+		["TIME LOOP AUTOMATION", 20, Color(0.85, 0.9, 1.0)],
 		["", 10, Color.WHITE],
-		["LOOP %d / %d%s%s" % [lm.loop_index + 1, K.LOOP_LIMIT, "  (預演)" if previewing else "", "   ⏩%dx" % int(ff_mult) if fast_forward else ""], 17, Color(1, 1, 1)],
-		["剩餘 %.1fs" % remain, 15, Color(0.8, 0.85, 0.95)],
-		["交貨 %d / %d" % [shown.delivered, K.WIN_TARGET], 15, Color(1, 0.9, 0.6) if shown.delivered < K.WIN_TARGET else Color(0.5, 1, 0.6)],
-		["AP %d / %d%s%s" % [lm.ap_available(), K.AP_MAX, _regen_text(), "  (建造中)" if busy > 0 else ""], 15, Color(0.8, 0.85, 0.95)],
-		["幽靈 %d / 上限 %s" % [lm.active.size(), _quota_text()], 15, Color(0.6, 0.8, 1.0)],
+		["LOOP %d / %d%s%s" % [lm.loop_index + 1, K.LOOP_LIMIT, "  (預演)" if previewing else "", "   ⏩%dx" % int(ff_mult) if fast_forward else ""], 21, Color(1, 1, 1)],
+		["剩餘 %.1fs" % remain, 18, Color(0.8, 0.85, 0.95)],
+		["交貨 %d / %d" % [shown.delivered, K.WIN_TARGET], 18, Color(1, 0.9, 0.6) if shown.delivered < K.WIN_TARGET else Color(0.5, 1, 0.6)],
+		["AP %d / %d%s%s" % [lm.ap_available(), K.AP_MAX, _regen_text(), "  (建造中)" if busy > 0 else ""], 18, Color(0.8, 0.85, 0.95)],
+		["幽靈 %d / 上限 %s" % [lm.active.size(), _quota_text()], 18, Color(0.6, 0.8, 1.0)],
 		["", 10, Color.WHITE],
-		["[1]礦 [2]帶 [3]爐 [4]齒 [5]組 [6]出口", 11, Color(1, 1, 1, 0.55)],
-		["點選單或用 1–6 選建築", 13, Color(1, 1, 1, 0.55)],
-		["滾輪切換建築   [Q/E] 轉向", 13, Color(1, 1, 1, 0.55)],
-		["左鍵放  右鍵拆", 13, Color(1, 1, 1, 0.55)],
-		["[SHIFT] 預演  [SPACE] 暫停  [ENTER] 快進  [R] 重來×2", 12, Color(1, 1, 1, 0.55)],
-		["拆自己會退 AP；拆幽靈要 2 AP", 11, Color(1, 1, 1, 0.4)],
+		["[1]礦 [2]帶 [3]爐 [4]齒 [5]組 [6]出口", 14, Color(1, 1, 1, 0.55)],
+		["點選單或用 1–6 選建築", 15, Color(1, 1, 1, 0.55)],
+		["滾輪切換建築   [Q/E] 轉向", 15, Color(1, 1, 1, 0.55)],
+		["左鍵放  右鍵拆", 15, Color(1, 1, 1, 0.55)],
+		["[SHIFT] 預演  [SPACE] 暫停  [ENTER] 快進  [R] 重來×2", 13, Color(1, 1, 1, 0.55)],
+		["拆自己會退 AP；拆幽靈要 2 AP", 13, Color(1, 1, 1, 0.4)],
+		["按住 SHIFT 拖下面時間軸 = 預演", 13, Color(1, 1, 1, 0.4)],
 	]
 	for line in lines:
 		var txt: String = line[0]
@@ -665,8 +665,8 @@ func _draw_end_loop_button(font: Font) -> void:
 		label = "⏩ 快進中 %dx（再按取消）" % int(ff_mult)
 	elif ap_zero:
 		label = "⏩ AP 用晒 — 快進至結束"
-	draw_string(font, eb.position + Vector2(12, 23), label,
-		HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(1, 0.95, 0.8) if (ap_zero or fast_forward) else Color(1, 1, 1, 0.85))
+	draw_string(font, eb.position + Vector2(14, 26), label,
+		HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(1, 0.95, 0.8) if (ap_zero or fast_forward) else Color(1, 1, 1, 0.85))
 	draw_string(font, eb.position + Vector2(eb.size.x - 60.0, 23), "[ENTER]",
 		HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(1, 1, 1, 0.5))
 

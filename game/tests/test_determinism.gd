@@ -141,7 +141,7 @@ func _test_ap_gate() -> void:
 	lm.start_level()
 	var accepted := 0
 	for i in range(K.AP_MAX + 5):
-		if lm.submit_build(Vector2i(i, 20), K.T_BELT, K.D_E):
+		if lm.submit_build(Vector2i(i, 8), K.T_BELT, K.D_E):
 			accepted += 1
 	_check("AP_MAX 之內全收 (%d/%d)" % [accepted, K.AP_MAX], accepted == K.AP_MAX)
 	_check("可用 AP 用晒", lm.ap_available() == 0, "available=%d" % lm.ap_available())
@@ -309,21 +309,23 @@ func _lane_line(y: int) -> Array:
 	return out
 
 func _test_win_reachable() -> void:
-	print("[T9] 勝利條件（%d 件）喺 loop 預算內真係做得到（B 規則：1 loop 1 條線）" % K.WIN_TARGET)
+	print("[T9] 勝利條件（%d 件）喺 %d 條礦脈內真係做得到" % [K.WIN_TARGET, K.ORE_LANES.size()])
 	var lm = _new_manager()
 	lm.start_level()
 	var curve: Array = []
-	for loop in range(K.LOOP_LIMIT):
+	var won_at := 0
+	for loop in range(mini(K.LOOP_LIMIT, K.ORE_LANES.size())):
 		lm.begin_loop(loop)
-		_run(lm, _lane_line(K.ORE_LANES[loop]), K.LOOP_TICKS)
+		_run(lm, _lane_line(int(K.ORE_LANES[loop])), K.LOOP_TICKS)
 		curve.append(lm.world.delivered)
 		if int(lm.world.delivered) >= K.WIN_TARGET:
-			print("  達標於第 %d 個 loop" % (loop + 1))
+			won_at = loop + 1
 			break
 		lm.seal_loop()
 	print("  交貨曲線：%s（目標 %d）" % [str(curve), K.WIN_TARGET])
-	_check("喺 8 個 loop 內達標", int(curve.back()) >= K.WIN_TARGET, "curve=%s" % str(curve))
-	_check("唔可以太早（最早第 4 個 loop 之後）", int(curve.back()) > 0)
+	_check("喺 %d 條礦脈內達標" % K.ORE_LANES.size(), won_at > 0, "curve=%s" % str(curve))
+	_check("唔會第 1 個 loop 就贏", won_at >= 2, "won_at=%d" % won_at)
+	print("  達標於第 %d 個 loop" % won_at)
 
 func _test_b_rule() -> void:
 	print("[T10] B 規則：機器唔可以直接餵機器，一定要經傳送帶")

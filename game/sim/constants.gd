@@ -2,8 +2,8 @@ extends RefCounted
 ## 全域平衡常數：改呢個檔就等於改難度曲線。
 
 # --- 模擬核心 ---
-const GRID_W: int = 24
-const GRID_H: int = 24
+const GRID_W: int = 16
+const GRID_H: int = 16
 const SIM_HZ: int = 30
 const LOOP_TICKS: int = 1800          # 60 秒 × 30 Hz
 
@@ -48,8 +48,8 @@ const ITEM_PART: int = 3
 
 # --- 礦脈（B 規則）：礦機只可以擺喺礦脈上，每條礦脈一行 ---
 const ORE_X: int = 4
-# 7 條礦脈，間距 3 格（一條產線高 1 格，所以唔會撞）
-const ORE_LANES: Array = [3, 6, 9, 12, 15, 18, 21]
+# 5 條礦脈，間距 3 格（16 行棋盤）
+const ORE_LANES: Array = [3, 6, 9, 12, 15]
 
 # --- 幽靈上限 ---
 # 0 = 唔封頂。本作真正嘅上限係地圖：7 條礦脈 = 最多 7 條產線。
@@ -74,9 +74,9 @@ const BUILD_TICKS: int = 15            # 落一件建築佔用你 0.5 秒
 # 300 tick = 10 秒 -> 一個 60 秒 loop 最多回 6 點（總開支 12 -> 18）。
 const AP_REGEN_TICKS: int = 300
 const AP_REGEN_AMOUNT: int = 1
-# B 規則下每 loop 只鋪得 1 條線（10 件）：4 條線 52、5 條線 ~60。
-# 目標 56 = 一定要 5 條線（4 條線 52 差少少），但留 4 件 buffer 畀「建造要 5 秒」。
-const WIN_TARGET: int = 56
+# 16x16 棋盤有 5 條礦脈；一條線 60 秒約 13 件。
+# 目標 48 = 一定要 4 條線（3 條 39 唔夠），仲有 1 條備用賽道。
+const WIN_TARGET: int = 48
 
 # --- 命令種類 ---
 const C_BUILD: int = 0
