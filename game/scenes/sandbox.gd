@@ -21,7 +21,7 @@ const PALETTE_COLS := 3            # 1/2/3 一行，4/5/6 下一行
 
 # 結算／規劃面板
 const REPORT_X := 700.0
-const REPORT_Y := 268.0
+const REPORT_Y := 320.0
 const REPORT_W := 552.0
 const REPORT_ROWS_Y := 78.0
 const REPORT_ROW_H := 21.0
@@ -67,6 +67,32 @@ var art: Dictionary = {}
 
 ## 攞貼圖：優先經 Godot 匯入系統；未匯入（例如未開過編輯器）就即場解 PNG。
 ## 咁樣 headless 測試同未 import 嘅環境都照跑得到。
+## 九宮格繪製（邊距 m）：四角保持原尺寸，邊同中間拉伸
+func _draw_nine(key: String, r: Rect2, m: float, mod: Color = Color.WHITE) -> void:
+	var t = art.get(key, null)
+	if t == null:
+		draw_rect(r, Color(0.10, 0.13, 0.18, mod.a))
+		return
+	var sz := Vector2(t.get_width(), t.get_height())
+	var mm: float = minf(m, minf(sz.x, sz.y) * 0.5)
+	var xsrc := [0.0, mm, sz.x - mm]
+	var ysrc := [0.0, mm, sz.y - mm]
+	var wsrc := [mm, sz.x - 2.0 * mm, mm]
+	var hsrc := [mm, sz.y - 2.0 * mm, mm]
+	var xdst := [r.position.x, r.position.x + mm, r.end.x - mm]
+	var ydst := [r.position.y, r.position.y + mm, r.end.y - mm]
+	var wdst := [mm, maxf(0.0, r.size.x - 2.0 * mm), mm]
+	var hdst := [mm, maxf(0.0, r.size.y - 2.0 * mm), mm]
+	for j in range(3):
+		if hdst[j] <= 0.0:
+			continue
+		for i in range(3):
+			if wdst[i] <= 0.0:
+				continue
+			draw_texture_rect_region(t,
+				Rect2(Vector2(xdst[i], ydst[j]), Vector2(wdst[i], hdst[j])),
+				Rect2(Vector2(xsrc[i], ysrc[j]), Vector2(wsrc[i], hsrc[j])), mod)
+
 func _tex(path: String) -> Texture2D:
 	if ResourceLoader.exists(path):
 		var res = load(path)
@@ -88,6 +114,7 @@ func _load_art() -> void:
 		"items/ore", "items/ingot", "items/gear", "items/part",
 		"tiles/water_a", "tiles/water_b",
 		"deco/grass", "deco/bush", "deco/rock",
+		"ui/panel", "ui/panel_light", "ui/btn_normal", "ui/btn_hover", "ui/btn_sel", "ui/row",
 	]
 	for n in singles:
 		var t := _tex(ART + n + ".png")
@@ -526,18 +553,12 @@ func _draw_palette(font: Font) -> void:
 		var r := _palette_rect(i)
 		var is_sel: bool = (t == selected)
 		var is_hi: bool = (i == hi)
-		var bg := Color(0.18, 0.24, 0.30)
+		var bkey := "ui/btn_normal"
 		if is_sel:
-			bg = Color(0.28, 0.45, 0.62)
+			bkey = "ui/btn_sel"
 		elif is_hi:
-			bg = Color(0.23, 0.31, 0.40)
-		draw_rect(r, bg)
-		var border := Color(1, 1, 1, 0.2)
-		if is_sel:
-			border = Color(0.6, 0.85, 1.0)
-		elif is_hi:
-			border = Color(0.75, 0.9, 1.0, 0.65)
-		draw_rect(r, border, false, 1.0)
+			bkey = "ui/btn_hover"
+		_draw_nine(bkey, r, 6.0)
 		var skey := _slot_tex(t)
 		if art.has(skey):
 			draw_texture_rect(art[skey], Rect2(r.position + Vector2(4, 6), Vector2(20, 20)), false)
@@ -556,7 +577,7 @@ func _draw_hover() -> void:
 		draw_rect(r, Color(1, 1, 1, 0.05))
 		draw_rect(r, Color(0.55, 0.85, 1.0, 0.55), false, 1.5)
 		var rcost: int = lm.rotate_cost(hover)
-		var txt := "Q/E 轉向（免費）" if rcost == 0 else "Q/E 轉向（%d AP）" % rcost
+		var txt := "Q/E 轉向（0.5s）" if rcost == 0 else "Q/E 轉向（%d AP）" % rcost
 		draw_string(ThemeDB.fallback_font, Vector2(r.position.x - 4, r.position.y - 6), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.7, 0.95, 1.0))
 		var ctr := r.get_center()
 		var dd: Vector2 = K.DIR_VEC[hb.dir]
@@ -680,6 +701,7 @@ func _draw_timeline(font: Font) -> void:
 	draw_string(font, Vector2(x0 + wpx - 4, TL_Y + 14), "%.0fs" % (float(K.LOOP_TICKS) / K.SIM_HZ), HORIZONTAL_ALIGNMENT_RIGHT, -1, 11, Color(1, 1, 1, 0.35))
 
 func _draw_hud(font: Font) -> void:
+	_draw_nine("ui/panel", Rect2(Vector2(PANEL_X - 16.0, 16.0), Vector2(1280.0 - PANEL_X - 8.0, 656.0)), 8.0)
 	var x := PANEL_X
 	var y := 44.0
 	var left := int(lm.world.tick if not previewing else pv_tick)
@@ -695,14 +717,17 @@ func _draw_hud(font: Font) -> void:
 		["AP %d / %d%s%s" % [lm.ap_available(), K.AP_MAX, _regen_text(), "  (建造中)" if busy > 0 else ""], 18, Color(0.8, 0.85, 0.95)],
 		["幽靈 %d / 上限 %s" % [lm.active.size(), _quota_text()], 18, Color(0.6, 0.8, 1.0)],
 		["", 10, Color.WHITE],
-		["[1]礦 [2]帶 [3]爐 [4]齒 [5]組 [6]出口", 14, Color(1, 1, 1, 0.55)],
-		["點選單或用 1–6 選建築", 15, Color(1, 1, 1, 0.55)],
-		["滾輪切換建築   [Q/E] 轉向（指住已放嘅建築 = 就地改）", 13, Color(1, 1, 1, 0.55)],
-		["左鍵放  右鍵拆", 15, Color(1, 1, 1, 0.55)],
-		["[SHIFT] 預演  [SPACE] 暫停  [ENTER] 快進  [R] 重來×2", 13, Color(1, 1, 1, 0.55)],
-		["拆自己會退 AP；拆幽靈要 2 AP", 13, Color(1, 1, 1, 0.4)],
-		["按住 SHIFT 拖下面時間軸 = 預演", 13, Color(1, 1, 1, 0.4)],
 	]
+	if phase == P.RUN:
+		lines.append_array([
+			["[1]礦 [2]帶 [3]爐 [4]齒 [5]組 [6]出口", 14, Color(1, 1, 1, 0.55)],
+			["點選單或用 1–6 選建築", 15, Color(1, 1, 1, 0.55)],
+			["滾輪切換建築   [Q/E] 轉向（指住已放嘅建築 = 就地改）", 13, Color(1, 1, 1, 0.55)],
+			["左鍵放  右鍵拆", 15, Color(1, 1, 1, 0.55)],
+			["[SHIFT] 預演  [SPACE] 暫停  [ENTER] 快進  [R] 重來×2", 13, Color(1, 1, 1, 0.55)],
+			["拆自己會退 AP；拆幽靈要 2 AP", 13, Color(1, 1, 1, 0.4)],
+			["按住 SHIFT 拖下面時間軸 = 預演", 13, Color(1, 1, 1, 0.4)],
+		])
 	for line in lines:
 		var txt: String = line[0]
 		if txt == "":
@@ -720,18 +745,10 @@ func _draw_end_loop_button(font: Font) -> void:
 	var eb := _end_loop_rect()
 	var e_hover: bool = eb.has_point(mouse_pos)
 	var ap_zero: bool = lm.ap_available() <= 0
-	var bg := Color(0.16, 0.22, 0.28)
-	if e_hover:
-		bg = Color(0.24, 0.33, 0.40)
-	if ap_zero:
-		bg = Color(0.30, 0.26, 0.16) if not e_hover else Color(0.42, 0.36, 0.20)
-	if fast_forward:
-		bg = Color(0.18, 0.34, 0.24)
-	draw_rect(eb, bg)
-	var border := Color(1, 1, 1, 0.28)
-	if ap_zero and not fast_forward:
-		border = Color(0.85, 0.72, 0.35, 0.9)
-	draw_rect(eb, border, false, 1.0)
+	var bkey := "ui/btn_normal"
+	if e_hover or fast_forward or ap_zero:
+		bkey = "ui/btn_hover"
+	_draw_nine(bkey, eb, 6.0)
 	var label := "⏩ 快進至 loop 結束"
 	if fast_forward:
 		label = "⏩ 快進中 %dx（再按取消）" % int(ff_mult)
@@ -746,8 +763,7 @@ func _draw_report(font: Font) -> void:
 	var start_btn := _report_start_rect()
 	var panel := Rect2(Vector2(REPORT_X - 8.0, REPORT_Y - 10.0),
 		Vector2(REPORT_W + 16.0, start_btn.end.y - REPORT_Y + 26.0))
-	draw_rect(panel, Color(0.04, 0.06, 0.09, 0.96))
-	draw_rect(panel, Color(0.45, 0.65, 0.9, 0.6), false, 1.0)
+	_draw_nine("ui/panel_light", panel, 8.0)
 
 	var next_quota: int = lm.ghost_quota_for(lm.loop_index + 1)
 	draw_string(font, Vector2(REPORT_X, REPORT_Y + 18.0),
@@ -769,10 +785,8 @@ func _draw_report(font: Font) -> void:
 		var r := _report_row_rect(li)
 		var on: bool = lm.active.has(li)
 		var hovered: bool = r.has_point(mouse_pos) and not _report_start_rect().has_point(mouse_pos)
-		if on:
-			draw_rect(r, Color(0.16, 0.30, 0.40) if not hovered else Color(0.20, 0.38, 0.50))
-		elif hovered:
-			draw_rect(r, Color(1, 1, 1, 0.06))
+		if on or hovered:
+			_draw_nine("ui/row", r, 4.0, Color(1, 1, 1, 1.0 if on else 0.6))
 		var box := Rect2(r.position + Vector2(6, 4), Vector2(13, 13))
 		draw_rect(box, Color(0.35, 0.75, 0.50) if on else Color(1, 1, 1, 0.10))
 		if on:
@@ -796,8 +810,7 @@ func _draw_report(font: Font) -> void:
 
 func _draw_end(font: Font) -> void:
 	var r := Rect2(Vector2(ORIGIN.x + 60, 190), Vector2(400, 150))
-	draw_rect(r, Color(0.03, 0.05, 0.08, 0.96))
-	draw_rect(r, Color(0.5, 0.7, 0.9, 0.7), false, 1.0)
+	_draw_nine("ui/panel_light", r, 8.0)
 	if phase == P.WIN:
 		draw_string(font, r.position + Vector2(16, 42), "達標！", HORIZONTAL_ALIGNMENT_LEFT, -1, 26, Color(0.55, 1.0, 0.65))
 		draw_string(font, r.position + Vector2(16, 76), "用咗 %d / %d 個 loop，合共交貨 %d" % [loops_used, K.LOOP_LIMIT, total_delivered], HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(1, 1, 1, 0.85))

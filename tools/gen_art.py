@@ -264,8 +264,47 @@ def _draw_rock():
     d.point((8, 13), (150, 160, 172, 255))
     return im
 
+
+def _panel(body, edge_hi, edge_lo, inset=None):
+    """24×24 九宮格面板（邊距 8）"""
+    im, d = canvas(24)
+    d.rectangle([0, 0, 23, 23], fill=(10, 14, 19, 255))          # 外框
+    d.rectangle([1, 1, 22, 22], fill=body)
+    d.line([1, 1, 22, 1], fill=edge_hi)                           # 頂邊高光
+    d.line([1, 2, 22, 2], fill=edge_hi)
+    d.line([1, 21, 22, 21], fill=edge_lo)                         # 底邊暗
+    d.line([1, 22, 22, 22], fill=edge_lo)
+    d.line([1, 1, 1, 22], fill=edge_hi)
+    d.line([22, 1, 22, 22], fill=edge_lo)
+    if inset:
+        d.rectangle([inset, inset, 23 - inset, 23 - inset], outline=inset_col, width=1) if False else None
+    # 四角切角，令唔會太方正
+    for (x, y) in ((0, 0), (23, 0), (0, 23), (23, 23)):
+        d.point((x, y), (0, 0, 0, 0))
+    return im
+
+
+def _button(body, hi, lo):
+    im, d = canvas(24)
+    d.rectangle([0, 0, 23, 23], fill=(10, 14, 19, 255))
+    d.rectangle([1, 1, 22, 22], fill=body)
+    d.line([1, 1, 22, 1], fill=hi)
+    d.line([1, 2, 22, 2], fill=hi)
+    d.line([1, 21, 22, 21], fill=lo)
+    d.line([1, 22, 22, 22], fill=lo)
+    for (x, y) in ((0, 0), (23, 0), (0, 23), (23, 23)):
+        d.point((x, y), (0, 0, 0, 0))
+    return im
+
+
+def _row():
+    im, d = canvas(24)
+    d.rectangle([0, 0, 23, 23], fill=(20, 28, 38, 240))
+    d.line([1, 1, 22, 1], fill=(38, 52, 68, 255))
+    return im
+
 def gen():
-    for sub in ("tiles", "buildings", "items", "deco"):
+    for sub in ("tiles", "buildings", "items", "deco", "ui"):
         (ART / sub).mkdir(parents=True, exist_ok=True)
 
     _draw_ground().save(ART / "tiles" / "ground.png")
@@ -273,6 +312,13 @@ def gen():
     _draw_water(0).save(ART / "tiles" / "water_a.png")
     _draw_water(1).save(ART / "tiles" / "water_b.png")
     (ART / "deco").mkdir(parents=True, exist_ok=True)
+    (ART / "ui").mkdir(parents=True, exist_ok=True)
+    _panel((26, 34, 46, 250), (78, 98, 122, 255), (14, 19, 26, 255)).save(ART / "ui" / "panel.png")
+    _panel((30, 40, 54, 250), (92, 116, 144, 255), (16, 22, 30, 255)).save(ART / "ui" / "panel_light.png")
+    _button((42, 58, 76, 255), (108, 134, 164, 255), (18, 24, 32, 255)).save(ART / "ui" / "btn_normal.png")
+    _button((56, 78, 102, 255), (140, 172, 206, 255), (24, 32, 42, 255)).save(ART / "ui" / "btn_hover.png")
+    _button((64, 92, 122, 255), (168, 204, 240, 255), (28, 38, 50, 255)).save(ART / "ui" / "btn_sel.png")
+    _row().save(ART / "ui" / "row.png")
     _draw_grass().save(ART / "deco" / "grass.png")
     _draw_bush().save(ART / "deco" / "bush.png")
     _draw_rock().save(ART / "deco" / "rock.png")
