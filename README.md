@@ -23,6 +23,29 @@
 | `SPACE` | 暫停（結算畫面 = 開始下一個 loop） |
 | `R` ×2 | 隨時重來；遊戲中要**按兩次**（2 秒內）確認，避免手滑清局 |
 
+## 用 Godot 編輯器打開
+
+專案喺 **`game/`** 呢個資料夾（`game/project.godot`），主場景係 `res://scenes/sandbox.tscn`。
+
+```powershell
+# 一鍵打開（會用 repo 根目錄嘅 Godot 引擎）
+powershell -ExecutionPolicy Bypass -File tools/open-game.ps1
+```
+
+或者手動：Godot Project Manager → **Import** → 揀 `game\project.godot` → Import & Edit。
+
+打開之後，左邊 FileSystem 會見到：
+
+```
+res://
+  sim/      constants.gd  building.gd  sim_world.gd  loop_manager.gd
+  scenes/   sandbox.tscn  sandbox.gd
+  tests/    test_determinism.gd  bench_*.gd
+  autoload/ mcp_interaction_server.gd   ← 開發工具，唔係遊戲邏輯
+```
+
+> 注意：根目錄仲有個 `demo/`，係早期 godot-bridge 嘅 hello-world，唔係遊戲本體。
+
 ## 執行
 
 ```powershell
