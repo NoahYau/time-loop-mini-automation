@@ -1,0 +1,13 @@
+# Godot 引擎二進位（257MB，唔應該入 repo）
+Godot_v4.7.2-stable_mono_win64/
+
+# Godot 匯入快取
+**/.godot/
+*.import
+
+# DSH 工具輸出
+.dsh-acl-out/
+
+# OS / 編輯器雜物
+Thumbs.db
+.DS_Store
