@@ -419,7 +419,7 @@ func _draw() -> void:
 		if b.has_out:
 			var ikey := _item_tex(b.item)
 			if art.has(ikey):
-				draw_texture_rect(art[ikey], Rect2(r.get_center() - Vector2(6, 6), Vector2(12, 12)), false, mod)
+				draw_texture_rect(art[ikey], Rect2(r.get_center() - Vector2(8, 8), Vector2(16, 16)), false, mod)
 			else:
 				draw_circle(r.get_center(), 4.6, _item_color(b.item))
 		if b.type == K.T_FURNACE:
