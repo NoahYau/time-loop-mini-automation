@@ -51,6 +51,8 @@ var loops_used: int = 0
 
 var mouse_pos: Vector2 = Vector2(-1, -1)   # 由事件追蹤嘅鼠標位置（同點擊同一座標系）
 var debug_clicks: Array = []      # 最近收到嘅點擊（除錯用）
+var toast: String = ""
+var toast_timer: float = 0.0
 var fast_forward: bool = false
 var ff_mult: float = 8.0
 var previewing: bool = false
@@ -65,6 +67,8 @@ func _ready() -> void:
 # ---------------------------------------------------------------- 主循環
 
 func _process(delta: float) -> void:
+	if toast_timer > 0.0:
+		toast_timer -= delta
 	# 鼠標喺建築選單上面 -> 手指（提示可以點）
 	var over_ui: bool = _palette_index_at(mouse_pos) >= 0
 	if phase == P.RUN and _end_loop_rect().has_point(mouse_pos):
@@ -154,6 +158,8 @@ func _restart() -> void:
 	fast_forward = false
 	paused = false
 	started = true
+	toast = "已重來 — 由 LOOP 1 開始"
+	toast_timer = 1.6
 
 # ---------------------------------------------------------------- 輸入
 
@@ -232,8 +238,7 @@ func _unhandled_input(e: InputEvent) -> void:
 				if phase == P.RUN:
 					paused = not paused
 			KEY_R:
-				if phase == P.WIN or phase == P.LOSE:
-					_restart()
+				_restart()
 			KEY_D:
 				debug_demo_build()
 
@@ -362,6 +367,12 @@ func _draw() -> void:
 	if previewing:
 		draw_rect(Rect2(ORIGIN - Vector2(6, 6), Vector2(K.GRID_W * CELL + 12, K.GRID_H * CELL + 12)), Color(0.35, 0.6, 1.0, 0.06))
 		draw_string(font, Vector2(ORIGIN.x, ORIGIN.y - 10), "預演 PREVIEW  t = %.1fs / %.0fs" % [float(pv_tick) / K.SIM_HZ, float(K.LOOP_TICKS) / K.SIM_HZ], HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(0.6, 0.85, 1.0))
+	if toast_timer > 0.0 and toast != "":
+		var a: float = clampf(toast_timer / 0.6, 0.0, 1.0)
+		var tw: float = font.get_string_size(toast, HORIZONTAL_ALIGNMENT_LEFT, -1, 15).x
+		var tp := Vector2(ORIGIN.x + (K.GRID_W * CELL - tw) * 0.5, ORIGIN.y + 46.0)
+		draw_rect(Rect2(tp + Vector2(-10, -16), Vector2(tw + 20, 24)), Color(0.05, 0.08, 0.12, 0.85 * a))
+		draw_string(font, tp, toast, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(1, 0.95, 0.75, a))
 	if phase == P.REPORT:
 		_draw_report(font)
 	if phase == P.WIN or phase == P.LOSE:
@@ -525,7 +536,7 @@ func _draw_hud(font: Font) -> void:
 		["點選單或用 1–6 選建築", 13, Color(1, 1, 1, 0.55)],
 		["滾輪切換建築   [Q/E] 轉向", 13, Color(1, 1, 1, 0.55)],
 		["左鍵放  右鍵拆", 13, Color(1, 1, 1, 0.55)],
-		["[SHIFT] 預演  [SPACE] 暫停  [ENTER] 快進", 12, Color(1, 1, 1, 0.55)],
+		["[SHIFT] 預演  [SPACE] 暫停  [ENTER] 快進  [R] 重來", 12, Color(1, 1, 1, 0.55)],
 		["拆自己會退 AP；拆幽靈要 2 AP", 11, Color(1, 1, 1, 0.4)],
 	]
 	for line in lines:
