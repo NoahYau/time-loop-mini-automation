@@ -57,6 +57,7 @@ func _initialize() -> void:
 	_test_ap_refund()
 	_test_ghost_selection()
 	_test_cell_conflict()
+	_test_ap_regen()
 	print("----------------------------------")
 	print("RESULT: %s (%d failures)" % ["PASS" if failures == 0 else "FAIL", failures])
 	quit(0 if failures == 0 else 1)
@@ -520,3 +521,60 @@ func _test_cell_conflict() -> void:
 		ok_dr and d.ap_left() == ap_d0 - K.AP_COST_DEMOLISH_GHOST - K.AP_COST_BUILD
 			and int(d.world.building_at(cell).type) == K.T_GEAR,
 		"ap=%d type=%d" % [d.ap_left(), int(d.world.building_at(cell).type)])
+# ---------------------------------------------------------------- T15
+
+func _test_ap_regen() -> void:
+	print("[T15] AP 隨時間回復（%d 點 / %d tick，上限 %d）" % [K.AP_REGEN_AMOUNT, K.AP_REGEN_TICKS, K.AP_MAX])
+	# 1) 花光之後，到時間會回
+	var lm = _new_manager()
+	lm.start_level()
+	for i in range(K.AP_MAX):
+		lm.submit_build(Vector2i(i, 1), K.T_BELT, K.D_E)
+	lm.step()
+	_check("先花光 12 點", lm.ap_left() == 0, "ap=%d" % lm.ap_left())
+	while lm.world.tick < K.AP_REGEN_TICKS - 1:
+		lm.step()
+	_check("未到時間唔回", lm.ap_left() == 0, "ap=%d" % lm.ap_left())
+	lm.step()
+	_check("到 %d tick 回 %d 點" % [K.AP_REGEN_TICKS, K.AP_REGEN_AMOUNT],
+		lm.ap_left() == K.AP_REGEN_AMOUNT, "ap=%d" % lm.ap_left())
+	_check("倒數查詢正常", lm.ticks_to_next_ap() > 0 and lm.ticks_to_next_ap() <= K.AP_REGEN_TICKS)
+
+	# 2) 唔可以超過上限
+	var lm2 = _new_manager()
+	lm2.start_level()
+	while lm2.world.tick < K.LOOP_TICKS:
+		lm2.step()
+	_check("冇花 AP 都唔會爆上限", lm2.ap_left() == K.AP_MAX, "ap=%d" % lm2.ap_left())
+	_check("滿 AP 時回報 -1", lm2.ticks_to_next_ap() == -1, "t=%d" % lm2.ticks_to_next_ap())
+
+	# 3) 有回復都保持確定性（live vs 幽靈重播）
+	var live = _new_manager()
+	live.start_level()
+	var d_live: Array = []
+	var i := 0
+	var script: Array = []
+	for x in range(10):
+		script.append({"t": x * 15, "k": K.C_BUILD, "x": 4 + x, "y": 3, "type": K.T_BELT, "dir": K.D_E})
+	# 遲啲（回咗 AP 之後）再建一個
+	script.append({"t": 700, "k": K.C_BUILD, "x": 20, "y": 3, "type": K.T_BELT, "dir": K.D_E})
+	for tick in range(K.LOOP_TICKS):
+		while i < script.size() and int(script[i]["t"]) <= live.world.tick:
+			var s: Dictionary = script[i]
+			live.submit_build(Vector2i(s["x"], s["y"]), s["type"], K.D_E)
+			i += 1
+		live.step()
+		d_live.append(live.world.digest())
+	var log_a: Array = live.current_log.duplicate(true)
+
+	var replay = _new_manager()
+	replay.start_level()
+	replay.add_ghost(log_a)
+	replay.begin_loop(1)
+	var d_replay: Array = []
+	for tick in range(K.LOOP_TICKS):
+		replay.step()
+		d_replay.append(replay.world.digest())
+	_check("有 AP 回復之下，重播逐 tick 一致", d_live == d_replay)
+	_check("回復後真係建到額外建築", int(live.world.buildings.size()) >= 10,
+		"buildings=%d" % live.world.buildings.size())

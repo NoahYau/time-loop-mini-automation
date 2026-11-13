@@ -160,6 +160,14 @@ func _pending_ap() -> int:
 	return total
 
 ## 即時可用 AP（扣走排隊中嘅）。
+## 距離下一次 AP 回復仲有幾多 tick（0 = 即時）。
+func ticks_to_next_ap() -> int:
+	if K.AP_REGEN_TICKS <= 0:
+		return 0
+	if ap_left() >= K.AP_MAX:
+		return -1
+	return K.AP_REGEN_TICKS - (world.tick % K.AP_REGEN_TICKS)
+
 func ap_available() -> int:
 	return maxi(0, ap_left() - _pending_ap())
 
@@ -208,6 +216,10 @@ func submit_demolish(cell: Vector2i) -> bool:
 
 func step() -> void:
 	var nt := world.tick + 1
+	# AP 隨時間回復：純 tick 驅動，所以 live / 預演 / 重播完全一致
+	if K.AP_REGEN_TICKS > 0 and nt % K.AP_REGEN_TICKS == 0:
+		for key in _ap.keys():
+			_ap[key] = mini(K.AP_MAX, int(_ap[key]) + K.AP_REGEN_AMOUNT)
 	for li in active:
 		_apply_until(li, ghosts[li], nt, li, li)
 	_apply_until(_pkey, current_log, nt, _pkey, loop_index)

@@ -68,6 +68,12 @@ const AP_COST_DEMOLISH_GHOST: int = 2
 # 拆幽靈嘅建築冇退款 —— 果 2 AP 代表「你要重做佢做過嘅嘢」，唔係消費。
 const AP_REFUND_DEMOLISH_OWN: int = 1
 const BUILD_TICKS: int = 15            # 落一件建築佔用你 0.5 秒
+
+# --- AP 隨時間回復 ---
+# 每 AP_REGEN_TICKS 個 tick 回 AP_REGEN_AMOUNT 點，上限仍然係 AP_MAX。
+# 300 tick = 10 秒 -> 一個 60 秒 loop 最多回 6 點（總開支 12 -> 18）。
+const AP_REGEN_TICKS: int = 300
+const AP_REGEN_AMOUNT: int = 1
 # B 規則下每 loop 只鋪得 1 條線（10 件）：4 條線 52、5 條線 ~60。
 # 目標 56 = 一定要 5 條線（4 條線 52 差少少），但留 4 件 buffer 畀「建造要 5 秒」。
 const WIN_TARGET: int = 56

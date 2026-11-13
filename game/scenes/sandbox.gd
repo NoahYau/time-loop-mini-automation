@@ -504,6 +504,15 @@ func _toggle_fast_forward() -> void:
 	fast_forward = not fast_forward
 	paused = false
 
+## AP 回復倒數（滿咗或者冇開回復就空字串）
+func _regen_text() -> String:
+	var t: int = lm.ticks_to_next_ap()
+	if t < 0:
+		return ""
+	if t == 0:
+		return "  +1"
+	return "  +1 於 %.1fs" % (float(t) / float(K.SIM_HZ))
+
 func _quota_text() -> String:
 	var q: int = lm.ghost_quota()
 	return "∞" if q >= lm.UNLIMITED_QUOTA else str(q)
@@ -556,7 +565,7 @@ func _draw_hud(font: Font) -> void:
 		["LOOP %d / %d%s%s" % [lm.loop_index + 1, K.LOOP_LIMIT, "  (預演)" if previewing else "", "   ⏩%dx" % int(ff_mult) if fast_forward else ""], 17, Color(1, 1, 1)],
 		["剩餘 %.1fs" % remain, 15, Color(0.8, 0.85, 0.95)],
 		["交貨 %d / %d" % [shown.delivered, K.WIN_TARGET], 15, Color(1, 0.9, 0.6) if shown.delivered < K.WIN_TARGET else Color(0.5, 1, 0.6)],
-		["AP %d / %d%s" % [lm.ap_available(), K.AP_MAX, "  (建造中)" if busy > 0 else ""], 15, Color(0.8, 0.85, 0.95)],
+		["AP %d / %d%s%s" % [lm.ap_available(), K.AP_MAX, _regen_text(), "  (建造中)" if busy > 0 else ""], 15, Color(0.8, 0.85, 0.95)],
 		["幽靈 %d / 上限 %s" % [lm.active.size(), _quota_text()], 15, Color(0.6, 0.8, 1.0)],
 		["", 10, Color.WHITE],
 		["[1]礦 [2]帶 [3]爐 [4]齒 [5]組 [6]出口", 11, Color(1, 1, 1, 0.55)],
