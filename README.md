@@ -73,6 +73,30 @@ game/
 確定性係整個設計嘅地基：所有命令（幽靈 + 玩家）都喺 tick 邊界依序執行，
 所以「預演」同「重播」可以同實際逐 tick 完全一致（T7 有驗證）。
 
+## 美術
+
+所有素材都係程式生成，冇手繪檔案：
+
+```
+tools/gen_art.py       ASCII 像素圖 + 調色板 -> game/art/**/*.png
+tools/preview_art.py   出一張 A4 聯絡表（art_preview.png）方便一次過睇
+```
+
+- 每格 10×10 像素，用 nearest 放大到 20px（整數 2 倍，唔會糊）
+- 建築：礦機／傳送帶（4 方向 × 2 動畫格）／合成爐（2 格火焰）／齒輪機／組裝台／出口
+- 貨物：礦、錠、齒輪、零件（4×4）
+- 地板與礦脈各一張
+
+改美術：改 `gen_art.py` 入面嘅 ASCII 圖（`.` 透明、`k` 外框、其餘見 PALETTE），再跑：
+
+```powershell
+python tools/gen_art.py
+python tools/preview_art.py
+```
+
+> 遊戲載入貼圖時會先試 Godot 匯入系統，未匯入（例如未開過編輯器）就即場解 PNG，
+> 所以 headless 測試同 CI 都跑得到。開過一次編輯器之後就會用 `.import` 嘅正路。
+
 ## 分支策略
 
 | 分支 | 用途 |

@@ -62,7 +62,43 @@ var previewing: bool = false
 var pv = null
 var pv_tick: int = 0
 
+const ART := "res://art/"
+var art: Dictionary = {}
+
+## 攞貼圖：優先經 Godot 匯入系統；未匯入（例如未開過編輯器）就即場解 PNG。
+## 咁樣 headless 測試同未 import 嘅環境都照跑得到。
+func _tex(path: String) -> Texture2D:
+	if ResourceLoader.exists(path):
+		var res = load(path)
+		if res is Texture2D:
+			return res
+	if FileAccess.file_exists(path):
+		var bytes := FileAccess.get_file_as_bytes(path)
+		if bytes.size() > 0:
+			var img := Image.new()
+			if img.load_png_from_buffer(bytes) == OK:
+				return ImageTexture.create_from_image(img)
+	return null
+
+func _load_art() -> void:
+	var singles := [
+		"tiles/ground", "tiles/ore", "buildings/miner", "buildings/gear",
+		"buildings/assembler", "buildings/sink",
+		"buildings/furnace_a", "buildings/furnace_b",
+		"items/ore", "items/ingot", "items/gear", "items/part",
+	]
+	for n in singles:
+		var t := _tex(ART + n + ".png")
+		if t != null:
+			art[n] = t
+	for d in ["e", "n", "s", "w"]:
+		for f in ["a", "b"]:
+			var t2 := _tex(ART + "buildings/belt_%s_%s.png" % [d, f])
+			if t2 != null:
+				art["buildings/belt_%s_%s" % [d, f]] = t2
+
 func _ready() -> void:
+	_load_art()
 	lm = LoopManager.new()
 	lm.start_level()
 	started = true
@@ -339,6 +375,9 @@ func _draw() -> void:
 	var w = pv.world if (previewing and pv != null) else lm.world
 
 	draw_rect(Rect2(ORIGIN - Vector2(6, 6), Vector2(K.GRID_W * CELL + 12, K.GRID_H * CELL + 12)), Color(0.05, 0.07, 0.09))
+	if art.has("tiles/ground"):
+		draw_texture_rect(art["tiles/ground"], Rect2(ORIGIN, Vector2(K.GRID_W * CELL, K.GRID_H * CELL)), true, Color(1, 1, 1, 0.9))
+	draw_rect(Rect2(ORIGIN - Vector2(3, 3), Vector2(K.GRID_W * CELL + 6, K.GRID_H * CELL + 6)), Color(0.22, 0.30, 0.40, 0.9), false, 2.0)
 	for i in range(0, K.GRID_W + 1, 3):
 		var x := ORIGIN.x + i * CELL
 		var y := ORIGIN.y + i * CELL
@@ -353,28 +392,41 @@ func _draw() -> void:
 	# 礦脈
 	for idx in w.ore:
 		var oc: Vector2i = w.cell_of(idx)
-		var orc := Rect2(ORIGIN + Vector2(oc) * CELL, Vector2(CELL, CELL)).grow(-1.0)
-		draw_rect(orc, Color(0.42, 0.30, 0.16, 0.85))
-		draw_circle(orc.get_center(), 2.8, Color(0.95, 0.72, 0.35, 0.9))
+		if art.has("tiles/ore"):
+			draw_texture_rect(art["tiles/ore"], Rect2(ORIGIN + Vector2(oc) * CELL, Vector2(CELL, CELL)), false)
+		else:
+			draw_rect(Rect2(ORIGIN + Vector2(oc) * CELL, Vector2(CELL, CELL)).grow(-1.0), Color(0.42, 0.30, 0.16, 0.85))
 
 	for idx in w.buildings:
 		var b = w.buildings[idx]
 		var cell: Vector2i = w.cell_of(idx)
-		var r := Rect2(ORIGIN + Vector2(cell) * CELL, Vector2(CELL, CELL)).grow(-1.2)
-		var col := _color_for(b.type)
-		if b.origin < lm.loop_index:
-			col.a = 0.6
-		draw_rect(r, col)
+		var r := Rect2(ORIGIN + Vector2(cell) * CELL, Vector2(CELL, CELL))
+		var key := _tex_key(b, w.tick)
+		var ghost: bool = b.origin < lm.loop_index
+		var mod := Color(1, 1, 1, 0.55) if ghost else Color(1, 1, 1, 1)
+		# 落地陰影，令建築唔會「浮」喺地面
+		draw_rect(Rect2(r.position + Vector2(1.5, 2.0), r.size), Color(0, 0, 0, 0.22))
+		if art.has(key):
+			draw_texture_rect(art[key], r, false, mod)
+		else:
+			var col := _color_for(b.type)
+			col.a = mod.a
+			draw_rect(r, col)
 		if flash.has(idx) and not previewing:
 			draw_rect(r.grow(1.0), Color(1, 1, 1, float(flash[idx])))
 		if deny.has(idx) and not previewing:
 			draw_rect(r.grow(1.0), Color(1, 0.3, 0.3, float(deny[idx])))
 		if b.has_out:
-			draw_circle(r.get_center(), 4.6, _item_color(b.item))
+			var ikey := _item_tex(b.item)
+			if art.has(ikey):
+				draw_texture_rect(art[ikey], Rect2(r.get_center() - Vector2(6, 6), Vector2(12, 12)), false, mod)
+			else:
+				draw_circle(r.get_center(), 4.6, _item_color(b.item))
 		if b.type == K.T_FURNACE:
 			var frac := clampf(float(b.progress) / float(K.SMELT_TICKS), 0.0, 1.0)
 			draw_rect(Rect2(r.position + Vector2(0, r.size.y - 3), Vector2(r.size.x * frac, 3)), Color(1, 1, 1, 0.35))
-		_draw_arrow(b, r)
+		if b.type != K.T_BELT:
+			_draw_arrow(b, r, mod)
 
 	# 幽靈位置（佢而家做緊邊一步）
 	var look_t: int = pv_tick if previewing else lm.world.tick
@@ -439,7 +491,11 @@ func _draw_palette(font: Font) -> void:
 		elif is_hi:
 			border = Color(0.75, 0.9, 1.0, 0.65)
 		draw_rect(r, border, false, 1.0)
-		draw_rect(Rect2(r.position + Vector2(5, 7), Vector2(14, 14)), _color_for(t))
+		var skey := _slot_tex(t)
+		if art.has(skey):
+			draw_texture_rect(art[skey], Rect2(r.position + Vector2(4, 6), Vector2(16, 16)), false)
+		else:
+			draw_rect(Rect2(r.position + Vector2(5, 7), Vector2(14, 14)), _color_for(t))
 		draw_string(font, Vector2(r.position.x + 23, r.position.y + 19), names[t], HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(1, 1, 1, 0.9))
 		draw_string(font, Vector2(r.position.x + 5, r.position.y + 38), "[%d]" % (i + 1), HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color(1, 1, 1, 0.45))
 
@@ -678,6 +734,39 @@ func _draw_end(font: Font) -> void:
 		draw_string(font, r.position + Vector2(16, 76), "%d 個 loop 內差 %d 件（最後一輪交貨 %d）" % [K.LOOP_LIMIT, K.WIN_TARGET - lm.world.delivered, last_loop_delivered], HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(1, 1, 1, 0.85))
 	draw_string(font, r.position + Vector2(16, 112), "[R] 重來", HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(0.7, 0.9, 1.0))
 
+## 用邊張貼圖（含動畫格）
+func _tex_key(b, tick: int) -> String:
+	match b.type:
+		K.T_MINER: return "buildings/miner"
+		K.T_FURNACE: return "buildings/furnace_" + ("a" if (tick / 8) % 2 == 0 else "b")
+		K.T_GEAR: return "buildings/gear"
+		K.T_ASSEMBLER: return "buildings/assembler"
+		K.T_SINK: return "buildings/sink"
+		K.T_BELT:
+			var dirs := ["n", "e", "s", "w"]
+			var frame := "a" if (tick / 6) % 2 == 0 else "b"
+			return "buildings/belt_%s_%s" % [dirs[b.dir], frame]
+	return ""
+
+## 選單用嘅貼圖（傳送帶用向東嘅第一格）
+func _slot_tex(t: int) -> String:
+	match t:
+		K.T_MINER: return "buildings/miner"
+		K.T_BELT: return "buildings/belt_e_a"
+		K.T_FURNACE: return "buildings/furnace_a"
+		K.T_GEAR: return "buildings/gear"
+		K.T_ASSEMBLER: return "buildings/assembler"
+		K.T_SINK: return "buildings/sink"
+	return ""
+
+func _item_tex(item: int) -> String:
+	match item:
+		K.ITEM_ORE: return "items/ore"
+		K.ITEM_INGOT: return "items/ingot"
+		K.ITEM_GEAR: return "items/gear"
+		K.ITEM_PART: return "items/part"
+	return ""
+
 func _color_for(t: int) -> Color:
 	match t:
 		K.T_MINER:     return Color(0.85, 0.55, 0.25)
@@ -696,11 +785,12 @@ func _item_color(item: int) -> Color:
 		K.ITEM_PART:  return Color(0.55, 1.0, 0.65)
 	return Color.WHITE
 
-func _draw_arrow(b, r: Rect2) -> void:
+func _draw_arrow(b, r: Rect2, mod: Color = Color.WHITE) -> void:
 	var c := r.get_center()
 	var d: Vector2 = K.DIR_VEC[b.dir]
 	var tip := c + d * (CELL * 0.26)
 	var l := Vector2(-d.y, d.x) * (CELL * 0.12)
-	draw_line(c - d * 2.0, tip, Color(1, 1, 1, 0.32), 1.2)
-	draw_line(tip, tip - d * 3.5 + l, Color(1, 1, 1, 0.32), 1.2)
-	draw_line(tip, tip - d * 3.5 - l, Color(1, 1, 1, 0.32), 1.2)
+	var ac := Color(1, 1, 1, 0.45 * mod.a)
+	draw_line(c - d * 2.0, tip, ac, 1.2)
+	draw_line(tip, tip - d * 3.5 + l, ac, 1.2)
+	draw_line(tip, tip - d * 3.5 - l, ac, 1.2)
