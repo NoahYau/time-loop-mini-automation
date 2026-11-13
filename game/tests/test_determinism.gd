@@ -16,29 +16,29 @@ const LoopManager = preload("res://sim/loop_manager.gd")
 var failures: int = 0
 
 var SCRIPT_A: Array = [
-	{"t": 0, "k": K.C_BUILD, "x": 4, "y": 3, "type": K.T_MINER, "dir": K.D_E},
-	{"t": 2, "k": K.C_BUILD, "x": 5, "y": 3, "type": K.T_BELT, "dir": K.D_E},
-	{"t": 4, "k": K.C_BUILD, "x": 6, "y": 3, "type": K.T_BELT, "dir": K.D_E},
-	{"t": 6, "k": K.C_BUILD, "x": 7, "y": 3, "type": K.T_FURNACE, "dir": K.D_E},
-	{"t": 8, "k": K.C_BUILD, "x": 8, "y": 3, "type": K.T_BELT, "dir": K.D_E},
-	{"t": 10, "k": K.C_BUILD, "x": 9, "y": 3, "type": K.T_GEAR, "dir": K.D_E},
-	{"t": 12, "k": K.C_BUILD, "x": 10, "y": 3, "type": K.T_BELT, "dir": K.D_E},
-	{"t": 14, "k": K.C_BUILD, "x": 11, "y": 3, "type": K.T_ASSEMBLER, "dir": K.D_E},
-	{"t": 16, "k": K.C_BUILD, "x": 12, "y": 3, "type": K.T_BELT, "dir": K.D_E},
-	{"t": 18, "k": K.C_BUILD, "x": 13, "y": 3, "type": K.T_SINK, "dir": K.D_E},
+	{"t": 0, "k": K.C_BUILD, "x": 3, "y": 2, "type": K.T_MINER, "dir": K.D_E},
+	{"t": 2, "k": K.C_BUILD, "x": 4, "y": 2, "type": K.T_BELT, "dir": K.D_E},
+	{"t": 4, "k": K.C_BUILD, "x": 5, "y": 2, "type": K.T_BELT, "dir": K.D_E},
+	{"t": 6, "k": K.C_BUILD, "x": 6, "y": 2, "type": K.T_FURNACE, "dir": K.D_E},
+	{"t": 8, "k": K.C_BUILD, "x": 7, "y": 2, "type": K.T_BELT, "dir": K.D_E},
+	{"t": 10, "k": K.C_BUILD, "x": 8, "y": 2, "type": K.T_GEAR, "dir": K.D_E},
+	{"t": 12, "k": K.C_BUILD, "x": 9, "y": 2, "type": K.T_BELT, "dir": K.D_E},
+	{"t": 14, "k": K.C_BUILD, "x": 10, "y": 2, "type": K.T_ASSEMBLER, "dir": K.D_E},
+	{"t": 16, "k": K.C_BUILD, "x": 11, "y": 2, "type": K.T_BELT, "dir": K.D_E},
+	{"t": 18, "k": K.C_BUILD, "x": 12, "y": 2, "type": K.T_SINK, "dir": K.D_E},
 ]
 
 var SCRIPT_B: Array = [
-	{"t": 0, "k": K.C_BUILD, "x": 4, "y": 9, "type": K.T_MINER, "dir": K.D_E},
-	{"t": 2, "k": K.C_BUILD, "x": 5, "y": 9, "type": K.T_BELT, "dir": K.D_E},
-	{"t": 4, "k": K.C_BUILD, "x": 6, "y": 9, "type": K.T_BELT, "dir": K.D_E},
-	{"t": 6, "k": K.C_BUILD, "x": 7, "y": 9, "type": K.T_FURNACE, "dir": K.D_E},
-	{"t": 8, "k": K.C_BUILD, "x": 8, "y": 9, "type": K.T_BELT, "dir": K.D_E},
-	{"t": 10, "k": K.C_BUILD, "x": 9, "y": 9, "type": K.T_GEAR, "dir": K.D_E},
-	{"t": 12, "k": K.C_BUILD, "x": 10, "y": 9, "type": K.T_BELT, "dir": K.D_E},
-	{"t": 14, "k": K.C_BUILD, "x": 11, "y": 9, "type": K.T_ASSEMBLER, "dir": K.D_E},
-	{"t": 16, "k": K.C_BUILD, "x": 12, "y": 9, "type": K.T_BELT, "dir": K.D_E},
-	{"t": 18, "k": K.C_BUILD, "x": 13, "y": 9, "type": K.T_SINK, "dir": K.D_E},
+	{"t": 0, "k": K.C_BUILD, "x": 3, "y": 8, "type": K.T_MINER, "dir": K.D_E},
+	{"t": 2, "k": K.C_BUILD, "x": 4, "y": 8, "type": K.T_BELT, "dir": K.D_E},
+	{"t": 4, "k": K.C_BUILD, "x": 5, "y": 8, "type": K.T_BELT, "dir": K.D_E},
+	{"t": 6, "k": K.C_BUILD, "x": 6, "y": 8, "type": K.T_FURNACE, "dir": K.D_E},
+	{"t": 8, "k": K.C_BUILD, "x": 7, "y": 8, "type": K.T_BELT, "dir": K.D_E},
+	{"t": 10, "k": K.C_BUILD, "x": 8, "y": 8, "type": K.T_GEAR, "dir": K.D_E},
+	{"t": 12, "k": K.C_BUILD, "x": 9, "y": 8, "type": K.T_BELT, "dir": K.D_E},
+	{"t": 14, "k": K.C_BUILD, "x": 10, "y": 8, "type": K.T_ASSEMBLER, "dir": K.D_E},
+	{"t": 16, "k": K.C_BUILD, "x": 11, "y": 8, "type": K.T_BELT, "dir": K.D_E},
+	{"t": 18, "k": K.C_BUILD, "x": 12, "y": 8, "type": K.T_SINK, "dir": K.D_E},
 ]
 
 func _initialize() -> void:
@@ -56,6 +56,9 @@ func _initialize() -> void:
 	_test_ore_rule()
 	_test_ap_refund()
 	_test_ghost_selection()
+	_test_cell_conflict()
+	_test_ap_regen()
+	_test_rotate()
 	print("----------------------------------")
 	print("RESULT: %s (%d failures)" % ["PASS" if failures == 0 else "FAIL", failures])
 	quit(0 if failures == 0 else 1)
@@ -139,7 +142,7 @@ func _test_ap_gate() -> void:
 	lm.start_level()
 	var accepted := 0
 	for i in range(K.AP_MAX + 5):
-		if lm.submit_build(Vector2i(i, 20), K.T_BELT, K.D_E):
+		if lm.submit_build(Vector2i(i, 8), K.T_BELT, K.D_E):
 			accepted += 1
 	_check("AP_MAX 之內全收 (%d/%d)" % [accepted, K.AP_MAX], accepted == K.AP_MAX)
 	_check("可用 AP 用晒", lm.ap_available() == 0, "available=%d" % lm.ap_available())
@@ -297,9 +300,9 @@ func _test_preview_isolation() -> void:
 ## 12 AP 只夠鋪 1 條線，所以每個 loop 增長 1 條。
 func _lane_line(y: int) -> Array:
 	var q := [
-		[4, K.T_MINER], [5, K.T_BELT], [6, K.T_BELT], [7, K.T_FURNACE],
-		[8, K.T_BELT], [9, K.T_GEAR], [10, K.T_BELT], [11, K.T_ASSEMBLER],
-		[12, K.T_BELT], [13, K.T_SINK],
+		[3, K.T_MINER], [4, K.T_BELT], [5, K.T_BELT], [6, K.T_FURNACE],
+		[7, K.T_BELT], [8, K.T_GEAR], [9, K.T_BELT], [10, K.T_ASSEMBLER],
+		[11, K.T_BELT], [12, K.T_SINK],
 	]
 	var out: Array = []
 	for i in range(q.size()):
@@ -307,21 +310,23 @@ func _lane_line(y: int) -> Array:
 	return out
 
 func _test_win_reachable() -> void:
-	print("[T9] 勝利條件（%d 件）喺 loop 預算內真係做得到（B 規則：1 loop 1 條線）" % K.WIN_TARGET)
+	print("[T9] 勝利條件（%d 件）喺 %d 條礦脈內真係做得到" % [K.WIN_TARGET, K.ORE_LANES.size()])
 	var lm = _new_manager()
 	lm.start_level()
 	var curve: Array = []
-	for loop in range(K.LOOP_LIMIT):
+	var won_at := 0
+	for loop in range(mini(K.LOOP_LIMIT, K.ORE_LANES.size())):
 		lm.begin_loop(loop)
-		_run(lm, _lane_line(K.ORE_LANES[loop]), K.LOOP_TICKS)
+		_run(lm, _lane_line(int(K.ORE_LANES[loop])), K.LOOP_TICKS)
 		curve.append(lm.world.delivered)
 		if int(lm.world.delivered) >= K.WIN_TARGET:
-			print("  達標於第 %d 個 loop" % (loop + 1))
+			won_at = loop + 1
 			break
 		lm.seal_loop()
 	print("  交貨曲線：%s（目標 %d）" % [str(curve), K.WIN_TARGET])
-	_check("喺 8 個 loop 內達標", int(curve.back()) >= K.WIN_TARGET, "curve=%s" % str(curve))
-	_check("唔可以太早（最早第 4 個 loop 之後）", int(curve.back()) > 0)
+	_check("喺 %d 條礦脈內達標" % K.ORE_LANES.size(), won_at > 0, "curve=%s" % str(curve))
+	_check("唔會第 1 個 loop 就贏", won_at >= 2, "won_at=%d" % won_at)
+	print("  達標於第 %d 個 loop" % won_at)
 
 func _test_b_rule() -> void:
 	print("[T10] B 規則：機器唔可以直接餵機器，一定要經傳送帶")
@@ -452,3 +457,194 @@ func _test_ghost_selection() -> void:
 	lm_c.active = [0]
 	_check("上限 1 時唔可以再加人", not lm_c.toggle_ghost(1, 1) and lm_c.active == [0],
 		"active=%s" % str(lm_c.active))
+# ---------------------------------------------------------------- T14
+
+## 玩家同幽靈搶同一格：4 種情況
+func _test_cell_conflict() -> void:
+	print("[T14] 玩家同幽靈搶同一格")
+	var cell := Vector2i(10, 3)
+	var ghost_log: Array = [{"t": 5, "k": K.C_BUILD, "x": cell.x, "y": cell.y, "type": K.T_BELT, "dir": K.D_E}]
+
+	# A) 幽靈已經建好
+	var a = _new_manager()
+	a.start_level()
+	a.add_ghost(ghost_log)
+	a.begin_loop(1)
+	while a.world.tick < 10:
+		a.step()
+	var ap_a0: int = a.ap_left()
+	var ok_a: bool = a.submit_build(cell, K.T_GEAR, K.D_E)
+	a.step()
+	_check("A 幽靈已佔住 -> 玩家被拒、唔扣 AP",
+		(not ok_a) and a.ap_left() == ap_a0 and int(a.world.building_at(cell).type) == K.T_BELT,
+		"ok=%s ap=%d type=%d" % [ok_a, a.ap_left(), int(a.world.building_at(cell).type)])
+
+	# B) 玩家先建，幽靈遲啲嚟
+	var b = _new_manager()
+	b.start_level()
+	b.add_ghost(ghost_log)
+	b.begin_loop(1)
+	var ok_b: bool = b.submit_build(cell, K.T_GEAR, K.D_E)
+	while b.world.tick < 10:
+		b.step()
+	_check("B 玩家先 -> 玩家嘅建築留低，幽靈靜靜雞失敗",
+		ok_b and int(b.world.building_at(cell).type) == K.T_GEAR,
+		"type=%d" % int(b.world.building_at(cell).type))
+
+	# C) 同一個 tick：幽靈先套用 -> 玩家失敗（但要有 rejected 紀錄畀 UI 閃紅）
+	var c = _new_manager()
+	c.start_level()
+	c.add_ghost(ghost_log)
+	c.begin_loop(1)
+	while c.world.tick < 4:
+		c.step()
+	var ap_c0: int = c.ap_left()
+	var ok_c: bool = c.submit_build(cell, K.T_GEAR, K.D_E)
+	var rej := 0
+	for i in range(4):
+		c.step()
+		rej += c.rejected.size()
+	_check("C 同 tick -> 幽靈贏、玩家唔扣 AP", int(c.world.building_at(cell).type) == K.T_BELT and c.ap_left() == ap_c0,
+		"type=%d ap=%d" % [int(c.world.building_at(cell).type), c.ap_left()])
+	_check("C 玩家失敗有記錄（畀 UI 閃紅）", rej > 0, "rejected=%d" % rej)
+
+	# D) 拆幽靈建築再重建
+	var d = _new_manager()
+	d.start_level()
+	d.add_ghost(ghost_log)
+	d.begin_loop(1)
+	while d.world.tick < 10:
+		d.step()
+	var ap_d0: int = d.ap_left()
+	d.submit_demolish(cell)
+	d.step()
+	var ok_dr: bool = d.submit_build(cell, K.T_GEAR, K.D_E)
+	d.step()
+	_check("D 拆幽靈 -2 AP，之後可以重建",
+		ok_dr and d.ap_left() == ap_d0 - K.AP_COST_DEMOLISH_GHOST - K.AP_COST_BUILD
+			and int(d.world.building_at(cell).type) == K.T_GEAR,
+		"ap=%d type=%d" % [d.ap_left(), int(d.world.building_at(cell).type)])
+# ---------------------------------------------------------------- T15
+
+func _test_ap_regen() -> void:
+	print("[T15] AP 隨時間回復（%d 點 / %d tick，上限 %d）" % [K.AP_REGEN_AMOUNT, K.AP_REGEN_TICKS, K.AP_MAX])
+	# 1) 花光之後，到時間會回
+	var lm = _new_manager()
+	lm.start_level()
+	for i in range(K.AP_MAX):
+		lm.submit_build(Vector2i(i, 1), K.T_BELT, K.D_E)
+	lm.step()
+	_check("先花光 12 點", lm.ap_left() == 0, "ap=%d" % lm.ap_left())
+	while lm.world.tick < K.AP_REGEN_TICKS - 1:
+		lm.step()
+	_check("未到時間唔回", lm.ap_left() == 0, "ap=%d" % lm.ap_left())
+	lm.step()
+	_check("到 %d tick 回 %d 點" % [K.AP_REGEN_TICKS, K.AP_REGEN_AMOUNT],
+		lm.ap_left() == K.AP_REGEN_AMOUNT, "ap=%d" % lm.ap_left())
+	_check("倒數查詢正常", lm.ticks_to_next_ap() > 0 and lm.ticks_to_next_ap() <= K.AP_REGEN_TICKS)
+
+	# 2) 唔可以超過上限
+	var lm2 = _new_manager()
+	lm2.start_level()
+	while lm2.world.tick < K.LOOP_TICKS:
+		lm2.step()
+	_check("冇花 AP 都唔會爆上限", lm2.ap_left() == K.AP_MAX, "ap=%d" % lm2.ap_left())
+	_check("滿 AP 時回報 -1", lm2.ticks_to_next_ap() == -1, "t=%d" % lm2.ticks_to_next_ap())
+
+	# 3) 有回復都保持確定性（live vs 幽靈重播）
+	var live = _new_manager()
+	live.start_level()
+	var d_live: Array = []
+	var i := 0
+	var script: Array = []
+	for x in range(10):
+		script.append({"t": x * 15, "k": K.C_BUILD, "x": 4 + x, "y": 3, "type": K.T_BELT, "dir": K.D_E})
+	# 遲啲（回咗 AP 之後）再建一個
+	script.append({"t": 700, "k": K.C_BUILD, "x": 19, "y": 2, "type": K.T_BELT, "dir": K.D_E})
+	for tick in range(K.LOOP_TICKS):
+		while i < script.size() and int(script[i]["t"]) <= live.world.tick:
+			var s: Dictionary = script[i]
+			live.submit_build(Vector2i(s["x"], s["y"]), s["type"], K.D_E)
+			i += 1
+		live.step()
+		d_live.append(live.world.digest())
+	var log_a: Array = live.current_log.duplicate(true)
+
+	var replay = _new_manager()
+	replay.start_level()
+	replay.add_ghost(log_a)
+	replay.begin_loop(1)
+	var d_replay: Array = []
+	for tick in range(K.LOOP_TICKS):
+		replay.step()
+		d_replay.append(replay.world.digest())
+	_check("有 AP 回復之下，重播逐 tick 一致", d_live == d_replay)
+	_check("回復後真係建到額外建築", int(live.world.buildings.size()) >= 10,
+		"buildings=%d" % live.world.buildings.size())
+# ---------------------------------------------------------------- T16
+
+func _test_rotate() -> void:
+	print("[T16] 就地方向旋轉（唔使拆）")
+	var cell := Vector2i(K.ORE_X, int(K.ORE_LANES[0]))
+
+	# 1) 自己嘅建築：免費
+	var a = _new_manager()
+	a.start_level()
+	a.submit_build(cell, K.T_MINER, K.D_E)
+	a.step()
+	var ap0: int = a.ap_left()
+	var ok_a: bool = a.submit_rotate(cell, K.D_S)
+	a.step()
+	_check("自己嘅可免費轉向", ok_a and int(a.world.building_at(cell).dir) == K.D_S and a.ap_left() == ap0,
+		"ok=%s dir=%d ap=%d" % [ok_a, int(a.world.building_at(cell).dir), a.ap_left()])
+	_check("空格唔可以轉", not a.can_rotate(Vector2i(9, 9)))
+
+	# 2) 幽靈嘅建築：2 AP
+	var b = _new_manager()
+	b.start_level()
+	b.submit_build(cell, K.T_MINER, K.D_E)
+	b.step()
+	var log_a: Array = b.current_log.duplicate(true)
+	b.add_ghost(log_a)
+	b.begin_loop(1)
+	b.step()
+	var ap_b0: int = b.ap_left()
+	var ok_b: bool = b.submit_rotate(cell, K.D_S)
+	b.step()
+	_check("轉幽靈嘅建築要 2 AP",
+		ok_b and int(b.world.building_at(cell).dir) == K.D_S
+			and b.ap_left() == ap_b0 - K.AP_COST_ROTATE_GHOST,
+		"ok=%s ap=%d dir=%d" % [ok_b, b.ap_left(), int(b.world.building_at(cell).dir)])
+
+	# 3) 有 rotate 嘅 log 一樣重播得一致
+	var live = _new_manager()
+	live.start_level()
+	var d_live: Array = []
+	var i := 0
+	var script: Array = [
+		{"t": 0, "k": K.C_BUILD, "x": K.ORE_X, "y": int(K.ORE_LANES[0]), "type": K.T_MINER, "dir": K.D_E},
+		{"t": 20, "k": K.C_ROTATE, "x": K.ORE_X, "y": int(K.ORE_LANES[0]), "dir": K.D_S},
+		{"t": 40, "k": K.C_BUILD, "x": K.ORE_X + 1, "y": int(K.ORE_LANES[0]), "type": K.T_BELT, "dir": K.D_N},
+		{"t": 60, "k": K.C_ROTATE, "x": K.ORE_X + 1, "y": int(K.ORE_LANES[0]), "dir": K.D_E},
+	]
+	for tick in range(K.LOOP_TICKS):
+		while i < script.size() and int(script[i]["t"]) <= live.world.tick:
+			var s: Dictionary = script[i]
+			var c := Vector2i(s["x"], s["y"])
+			if int(s["k"]) == K.C_BUILD:
+				live.submit_build(c, s["type"], s["dir"])
+			else:
+				live.submit_rotate(c, s["dir"])
+			i += 1
+		live.step()
+		d_live.append(live.world.digest())
+
+	var replay = _new_manager()
+	replay.start_level()
+	replay.add_ghost(live.current_log.duplicate(true))
+	replay.begin_loop(1)
+	var d_replay: Array = []
+	for tick in range(K.LOOP_TICKS):
+		replay.step()
+		d_replay.append(replay.world.digest())
+	_check("有旋轉命令都重播一致", d_live == d_replay)

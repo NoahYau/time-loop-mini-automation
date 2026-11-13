@@ -1,28 +1,28 @@
 extends Node2D
 ## S2 可玩切片：滑鼠建造 + 時間軸預演 + 幽靈工作報告。
 ##
-## 操作：點建築選單 / 按 1–6 / 滾輪 選建築，Q/E 轉向，左鍵放、右鍵拆。
+## 操作：點建築選單 / 按 1–6 / 滾輪 選建築；Q/E 轉向（滑鼠指住已放嘅建築 = 就地旋轉）；左鍵放、右鍵拆。
 ##       按住 SHIFT = 時間停止 + 拖時間軸預演（呢個係可讀性生死線）。
 ##       SPACE 暫停，D = 自動示範一條線（debug），R 重來（完場後）。
 
 const K = preload("res://sim/constants.gd")
 const LoopManager = preload("res://sim/loop_manager.gd")
 
-const CELL := 20.0
-const ORIGIN := Vector2(26, 30)
+const CELL := 40.0
+const ORIGIN := Vector2(20, 44)
 const BUILD_TICKS: int = K.BUILD_TICKS
-const TL_Y := 512.0                # 時間軸
+const TL_Y := 692.0                # 時間軸
 const TL_H := 16.0
-const PANEL_X := 526.0
-const PALETTE_Y := 330.0           # 建築選單頂部
-const PALETTE_BTN := Vector2(84, 44)
+const PANEL_X := 700.0
+const PALETTE_Y := 392.0           # 建築選單頂部
+const PALETTE_BTN := Vector2(104, 58)
 const PALETTE_GAP := 6.0
 const PALETTE_COLS := 3            # 1/2/3 一行，4/5/6 下一行
 
 # 結算／規劃面板
-const REPORT_X := 514.0
-const REPORT_Y := 200.0
-const REPORT_W := 434.0
+const REPORT_X := 700.0
+const REPORT_Y := 268.0
+const REPORT_W := 552.0
 const REPORT_ROWS_Y := 78.0
 const REPORT_ROW_H := 21.0
 const PALETTE_TYPES: Array = [1, 2, 3, 4, 5, 6]   # 同 constants.gd 嘅 T_* 一致
@@ -51,13 +51,56 @@ var loops_used: int = 0
 
 var mouse_pos: Vector2 = Vector2(-1, -1)   # 由事件追蹤嘅鼠標位置（同點擊同一座標系）
 var debug_clicks: Array = []      # 最近收到嘅點擊（除錯用）
+var restart_armed: bool = false
+var restart_arm_timer: float = 0.0
+const RESTART_CONFIRM_SEC := 2.0
+var toast: String = ""
+var toast_timer: float = 0.0
 var fast_forward: bool = false
 var ff_mult: float = 8.0
 var previewing: bool = false
 var pv = null
 var pv_tick: int = 0
 
+const ART := "res://art/"
+var art: Dictionary = {}
+
+## 攞貼圖：優先經 Godot 匯入系統；未匯入（例如未開過編輯器）就即場解 PNG。
+## 咁樣 headless 測試同未 import 嘅環境都照跑得到。
+func _tex(path: String) -> Texture2D:
+	if ResourceLoader.exists(path):
+		var res = load(path)
+		if res is Texture2D:
+			return res
+	if FileAccess.file_exists(path):
+		var bytes := FileAccess.get_file_as_bytes(path)
+		if bytes.size() > 0:
+			var img := Image.new()
+			if img.load_png_from_buffer(bytes) == OK:
+				return ImageTexture.create_from_image(img)
+	return null
+
+func _load_art() -> void:
+	var singles := [
+		"tiles/ground", "tiles/ore", "buildings/miner", "buildings/gear",
+		"buildings/assembler", "buildings/sink",
+		"buildings/furnace_a", "buildings/furnace_b",
+		"items/ore", "items/ingot", "items/gear", "items/part",
+		"tiles/water_a", "tiles/water_b",
+		"deco/grass", "deco/bush", "deco/rock",
+	]
+	for n in singles:
+		var t := _tex(ART + n + ".png")
+		if t != null:
+			art[n] = t
+	for d in ["e", "n", "s", "w"]:
+		for f in ["a", "b"]:
+			var t2 := _tex(ART + "buildings/belt_%s_%s.png" % [d, f])
+			if t2 != null:
+				art["buildings/belt_%s_%s" % [d, f]] = t2
+
 func _ready() -> void:
+	_load_art()
 	lm = LoopManager.new()
 	lm.start_level()
 	started = true
@@ -65,6 +108,12 @@ func _ready() -> void:
 # ---------------------------------------------------------------- 主循環
 
 func _process(delta: float) -> void:
+	if toast_timer > 0.0:
+		toast_timer -= delta
+	if restart_arm_timer > 0.0:
+		restart_arm_timer -= delta
+		if restart_arm_timer <= 0.0:
+			restart_armed = false
 	# 鼠標喺建築選單上面 -> 手指（提示可以點）
 	var over_ui: bool = _palette_index_at(mouse_pos) >= 0
 	if phase == P.RUN and _end_loop_rect().has_point(mouse_pos):
@@ -89,6 +138,7 @@ func _process(delta: float) -> void:
 		guard += 1
 		acc -= step_dt
 		lm.step()
+		_drain_rejected()
 		if busy > 0:
 			busy -= 1
 		_tick_fx(step_dt)
@@ -99,6 +149,15 @@ func _process(delta: float) -> void:
 			_end_loop(false)
 			break
 	queue_redraw()
+
+## 玩家命令喺執行時被拒（例如同一 tick 撞到幽靈）-> 紅閃，唔好靜靜雞食咗
+func _drain_rejected() -> void:
+	if lm.rejected.is_empty():
+		return
+	for r in lm.rejected:
+		var idx: int = lm.world.idx_of(Vector2i(int(r["x"]), int(r["y"])))
+		deny[idx] = 0.5
+	lm.rejected.clear()
 
 func _tick_fx(dt: float) -> void:
 	for k in flash.keys():
@@ -154,6 +213,10 @@ func _restart() -> void:
 	fast_forward = false
 	paused = false
 	started = true
+	restart_armed = false
+	restart_arm_timer = 0.0
+	toast = "已重來 — 由 LOOP 1 開始"
+	toast_timer = 1.6
 
 # ---------------------------------------------------------------- 輸入
 
@@ -226,14 +289,21 @@ func _unhandled_input(e: InputEvent) -> void:
 			KEY_4: selected = K.T_GEAR
 			KEY_5: selected = K.T_ASSEMBLER
 			KEY_6: selected = K.T_SINK
-			KEY_Q: place_dir = (place_dir + 3) % 4
-			KEY_E: place_dir = (place_dir + 1) % 4
+			KEY_Q: _rotate_action(-1)
+			KEY_E: _rotate_action(1)
 			KEY_SPACE:
 				if phase == P.RUN:
 					paused = not paused
 			KEY_R:
 				if phase == P.WIN or phase == P.LOSE:
 					_restart()
+				elif restart_armed and restart_arm_timer > 0.0:
+					_restart()
+				else:
+					restart_armed = true
+					restart_arm_timer = RESTART_CONFIRM_SEC
+					toast = "再按一次 R 確認重來（2 秒內）"
+					toast_timer = RESTART_CONFIRM_SEC
 			KEY_D:
 				debug_demo_build()
 
@@ -258,6 +328,25 @@ func _set_preview(t: int) -> void:
 		pv.preview_at(pv_tick)
 
 # ---------------------------------------------------------------- 建造
+
+## Q/E：滑鼠指着已放置嘅建築就轉佢，否則轉放落去嘅方向
+func _rotate_action(step: int) -> void:
+	if hover != Vector2i(-1, -1):
+		var b = lm.world.building_at(hover)
+		if b != null:
+			_try_rotate(hover, (int(b.dir) + step + 4) % 4)
+			return
+	place_dir = (place_dir + step + 4) % 4
+
+func _try_rotate(cell: Vector2i, dir: int) -> void:
+	if phase != P.RUN:
+		return
+	if busy > 0 or not lm.can_rotate(cell):
+		deny[lm.world.idx_of(cell)] = 0.3
+		return
+	if lm.submit_rotate(cell, dir):
+		flash[lm.world.idx_of(cell)] = 0.35
+		busy = BUILD_TICKS
 
 func _try_place(cell: Vector2i) -> void:
 	if cell == Vector2i(-1, -1) or phase != P.RUN:
@@ -290,9 +379,9 @@ func debug_demo_build() -> void:
 ## 共 10 件建築，60 秒約 15 件零件。
 func debug_build_line(y: int) -> int:
 	var line := [
-		[4, K.T_MINER], [5, K.T_BELT], [6, K.T_BELT], [7, K.T_FURNACE],
-		[8, K.T_BELT], [9, K.T_GEAR], [10, K.T_BELT], [11, K.T_ASSEMBLER],
-		[12, K.T_BELT], [13, K.T_SINK],
+		[3, K.T_MINER], [4, K.T_BELT], [5, K.T_BELT], [6, K.T_FURNACE],
+		[7, K.T_BELT], [8, K.T_GEAR], [9, K.T_BELT], [10, K.T_ASSEMBLER],
+		[11, K.T_BELT], [12, K.T_SINK],
 	]
 	var ok := 0
 	for item in line:
@@ -306,7 +395,22 @@ func _draw() -> void:
 	var font := ThemeDB.fallback_font
 	var w = pv.world if (previewing and pv != null) else lm.world
 
-	draw_rect(Rect2(ORIGIN - Vector2(6, 6), Vector2(K.GRID_W * CELL + 12, K.GRID_H * CELL + 12)), Color(0.05, 0.07, 0.09))
+	# --- 海 ---
+	var sea := Rect2(Vector2(0, 0), Vector2(PANEL_X - 14.0, 720))
+	var wkey := "tiles/water_a" if (w.tick / 14) % 2 == 0 else "tiles/water_b"
+	if art.has(wkey):
+		draw_texture_rect(art[wkey], sea, true)
+	else:
+		draw_rect(sea, Color(0.10, 0.18, 0.27))
+
+	# --- 沙灘 + 島邊 ---
+	var beach := Rect2(ORIGIN - Vector2(10, 10), Vector2(K.GRID_W * CELL + 20, K.GRID_H * CELL + 20))
+	draw_rect(beach, Color(0.30, 0.26, 0.18))
+	draw_rect(beach.grow(-4), Color(0.36, 0.31, 0.21))
+	draw_rect(beach.grow(1), Color(0.22, 0.19, 0.14), false, 2.0)
+
+	if art.has("tiles/ground"):
+		draw_texture_rect(art["tiles/ground"], Rect2(ORIGIN, Vector2(K.GRID_W * CELL, K.GRID_H * CELL)), true, Color(1, 1, 1, 0.9))
 	for i in range(0, K.GRID_W + 1, 3):
 		var x := ORIGIN.x + i * CELL
 		var y := ORIGIN.y + i * CELL
@@ -318,31 +422,58 @@ func _draw() -> void:
 		draw_rect(Rect2(Vector2(ORIGIN.x, ORIGIN.y + float(lane) * CELL),
 			Vector2(K.GRID_W * CELL, CELL)), Color(0.42, 0.30, 0.16, 0.05))
 
+	# 礦脈軌道底色
+	for lane in K.ORE_LANES:
+		draw_rect(Rect2(Vector2(ORIGIN.x, ORIGIN.y + float(lane) * CELL),
+			Vector2(K.GRID_W * CELL, CELL)), Color(0.55, 0.38, 0.18, 0.10))
+
+	# 地表裝飾（草／灌木／石頭；純視覺，唔阻建造）
+	for cy in range(K.GRID_H):
+		for cx in range(K.GRID_W):
+			var dk := _deco_key(cx, cy)
+			if dk == "" or not art.has(dk):
+				continue
+			var dr := Rect2(ORIGIN + Vector2(cx, cy) * CELL, Vector2(CELL, CELL))
+			draw_texture_rect(art[dk], dr, false, Color(1, 1, 1, 0.95))
+
 	# 礦脈
 	for idx in w.ore:
 		var oc: Vector2i = w.cell_of(idx)
-		var orc := Rect2(ORIGIN + Vector2(oc) * CELL, Vector2(CELL, CELL)).grow(-1.0)
-		draw_rect(orc, Color(0.42, 0.30, 0.16, 0.85))
-		draw_circle(orc.get_center(), 2.8, Color(0.95, 0.72, 0.35, 0.9))
+		if art.has("tiles/ore"):
+			draw_texture_rect(art["tiles/ore"], Rect2(ORIGIN + Vector2(oc) * CELL, Vector2(CELL, CELL)), false)
+		else:
+			draw_rect(Rect2(ORIGIN + Vector2(oc) * CELL, Vector2(CELL, CELL)).grow(-1.0), Color(0.42, 0.30, 0.16, 0.85))
 
 	for idx in w.buildings:
 		var b = w.buildings[idx]
 		var cell: Vector2i = w.cell_of(idx)
-		var r := Rect2(ORIGIN + Vector2(cell) * CELL, Vector2(CELL, CELL)).grow(-1.2)
-		var col := _color_for(b.type)
-		if b.origin < lm.loop_index:
-			col.a = 0.6
-		draw_rect(r, col)
+		var r := Rect2(ORIGIN + Vector2(cell) * CELL, Vector2(CELL, CELL))
+		var key := _tex_key(b, w.tick)
+		var ghost: bool = b.origin < lm.loop_index
+		var mod := Color(1, 1, 1, 0.55) if ghost else Color(1, 1, 1, 1)
+		# 落地陰影，令建築唔會「浮」喺地面
+		draw_rect(Rect2(r.position + Vector2(1.5, 2.0), r.size), Color(0, 0, 0, 0.22))
+		if art.has(key):
+			draw_texture_rect(art[key], r, false, mod)
+		else:
+			var col := _color_for(b.type)
+			col.a = mod.a
+			draw_rect(r, col)
 		if flash.has(idx) and not previewing:
 			draw_rect(r.grow(1.0), Color(1, 1, 1, float(flash[idx])))
 		if deny.has(idx) and not previewing:
 			draw_rect(r.grow(1.0), Color(1, 0.3, 0.3, float(deny[idx])))
 		if b.has_out:
-			draw_circle(r.get_center(), 4.6, _item_color(b.item))
+			var ikey := _item_tex(b.item)
+			if art.has(ikey):
+				draw_texture_rect(art[ikey], Rect2(r.get_center() - Vector2(8, 8), Vector2(16, 16)), false, mod)
+			else:
+				draw_circle(r.get_center(), 4.6, _item_color(b.item))
 		if b.type == K.T_FURNACE:
 			var frac := clampf(float(b.progress) / float(K.SMELT_TICKS), 0.0, 1.0)
 			draw_rect(Rect2(r.position + Vector2(0, r.size.y - 3), Vector2(r.size.x * frac, 3)), Color(1, 1, 1, 0.35))
-		_draw_arrow(b, r)
+		if b.type != K.T_BELT:
+			_draw_arrow(b, r, mod)
 
 	# 幽靈位置（佢而家做緊邊一步）
 	var look_t: int = pv_tick if previewing else lm.world.tick
@@ -361,7 +492,13 @@ func _draw() -> void:
 
 	if previewing:
 		draw_rect(Rect2(ORIGIN - Vector2(6, 6), Vector2(K.GRID_W * CELL + 12, K.GRID_H * CELL + 12)), Color(0.35, 0.6, 1.0, 0.06))
-		draw_string(font, Vector2(ORIGIN.x, ORIGIN.y - 10), "預演 PREVIEW  t = %.1fs / %.0fs" % [float(pv_tick) / K.SIM_HZ, float(K.LOOP_TICKS) / K.SIM_HZ], HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(0.6, 0.85, 1.0))
+		draw_string(font, Vector2(ORIGIN.x, ORIGIN.y - 12), "預演 PREVIEW  t = %.1fs / %.0fs" % [float(pv_tick) / K.SIM_HZ, float(K.LOOP_TICKS) / K.SIM_HZ], HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(0.6, 0.85, 1.0))
+	if toast_timer > 0.0 and toast != "":
+		var a: float = clampf(toast_timer / 0.6, 0.0, 1.0)
+		var tw: float = font.get_string_size(toast, HORIZONTAL_ALIGNMENT_LEFT, -1, 15).x
+		var tp := Vector2(ORIGIN.x + (K.GRID_W * CELL - tw) * 0.5, ORIGIN.y + 46.0)
+		draw_rect(Rect2(tp + Vector2(-10, -16), Vector2(tw + 20, 24)), Color(0.05, 0.08, 0.12, 0.85 * a))
+		draw_string(font, tp, toast, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(1, 0.95, 0.75, a))
 	if phase == P.REPORT:
 		_draw_report(font)
 	if phase == P.WIN or phase == P.LOSE:
@@ -401,14 +538,30 @@ func _draw_palette(font: Font) -> void:
 		elif is_hi:
 			border = Color(0.75, 0.9, 1.0, 0.65)
 		draw_rect(r, border, false, 1.0)
-		draw_rect(Rect2(r.position + Vector2(5, 7), Vector2(14, 14)), _color_for(t))
-		draw_string(font, Vector2(r.position.x + 23, r.position.y + 19), names[t], HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(1, 1, 1, 0.9))
-		draw_string(font, Vector2(r.position.x + 5, r.position.y + 38), "[%d]" % (i + 1), HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color(1, 1, 1, 0.45))
+		var skey := _slot_tex(t)
+		if art.has(skey):
+			draw_texture_rect(art[skey], Rect2(r.position + Vector2(4, 6), Vector2(20, 20)), false)
+		else:
+			draw_rect(Rect2(r.position + Vector2(5, 7), Vector2(14, 14)), _color_for(t))
+		draw_string(font, Vector2(r.position.x + 26, r.position.y + 22), names[t], HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(1, 1, 1, 0.92))
+		draw_string(font, Vector2(r.position.x + 6, r.position.y + 46), "[%d]" % (i + 1), HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(1, 1, 1, 0.45))
 
 func _draw_hover() -> void:
 	if hover == Vector2i(-1, -1) or phase != P.RUN:
 		return
 	var r := Rect2(ORIGIN + Vector2(hover) * CELL, Vector2(CELL, CELL)).grow(-1.2)
+	# 指住已放置嘅建築 -> 顯示「可以就地轉向」
+	var hb = lm.world.building_at(hover)
+	if hb != null:
+		draw_rect(r, Color(1, 1, 1, 0.05))
+		draw_rect(r, Color(0.55, 0.85, 1.0, 0.55), false, 1.5)
+		var rcost: int = lm.rotate_cost(hover)
+		var txt := "Q/E 轉向（免費）" if rcost == 0 else "Q/E 轉向（%d AP）" % rcost
+		draw_string(ThemeDB.fallback_font, Vector2(r.position.x - 4, r.position.y - 6), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.7, 0.95, 1.0))
+		var ctr := r.get_center()
+		var dd: Vector2 = K.DIR_VEC[hb.dir]
+		draw_line(ctr, ctr + dd * (CELL * 0.32), Color(0.7, 0.95, 1.0, 0.9), 2.0)
+		return
 	var ok: bool = lm.can_build(hover, selected) and busy <= 0
 	draw_rect(r, Color(0.4, 1.0, 0.5, 0.22) if ok else Color(1, 0.35, 0.35, 0.22))
 	draw_rect(r, Color(0.5, 1.0, 0.6, 0.8) if ok else Color(1, 0.4, 0.4, 0.8), false, 1.0)
@@ -466,6 +619,28 @@ func _toggle_fast_forward() -> void:
 	fast_forward = not fast_forward
 	paused = false
 
+## AP 回復倒數（滿咗或者冇開回復就空字串）
+func _regen_text() -> String:
+	var t: int = lm.ticks_to_next_ap()
+	if t < 0:
+		return ""
+	if t == 0:
+		return "  +1"
+	return "  +1 於 %.1fs" % (float(t) / float(K.SIM_HZ))
+
+## 每格有冇裝飾（固定 hash，重播/預演都一樣）
+func _deco_key(cx: int, cy: int) -> String:
+	var h: int = (cx * 73856093) ^ (cy * 19349663) ^ 530357
+	h = (h ^ (h >> 13)) * 1274126177
+	var v: int = absi(h) % 100
+	if v < 5:
+		return "deco/grass"
+	if v < 7:
+		return "deco/bush"
+	if v < 8:
+		return "deco/rock"
+	return ""
+
 func _quota_text() -> String:
 	var q: int = lm.ghost_quota()
 	return "∞" if q >= lm.UNLIMITED_QUOTA else str(q)
@@ -502,8 +677,7 @@ func _draw_timeline(font: Font) -> void:
 	var frac := float(cur) / float(K.LOOP_TICKS)
 	draw_rect(Rect2(Vector2(x0, TL_Y), Vector2(wpx * frac, TL_H)), Color(0.35, 0.65, 0.95, 0.25))
 	draw_line(Vector2(x0 + wpx * frac, TL_Y - 3), Vector2(x0 + wpx * frac, TL_Y + TL_H + 3), Color(0.7, 0.9, 1.0), 2.0)
-	draw_string(font, Vector2(x0, TL_Y - 6), "SHIFT 拖時間軸預演", HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(1, 1, 1, 0.35))
-	draw_string(font, Vector2(x0 + wpx, TL_Y - 6), "%.0fs" % (float(K.LOOP_TICKS) / K.SIM_HZ), HORIZONTAL_ALIGNMENT_RIGHT, -1, 11, Color(1, 1, 1, 0.35))
+	draw_string(font, Vector2(x0 + wpx - 4, TL_Y + 14), "%.0fs" % (float(K.LOOP_TICKS) / K.SIM_HZ), HORIZONTAL_ALIGNMENT_RIGHT, -1, 11, Color(1, 1, 1, 0.35))
 
 func _draw_hud(font: Font) -> void:
 	var x := PANEL_X
@@ -513,20 +687,21 @@ func _draw_hud(font: Font) -> void:
 	# 預演時 HUD 必須顯示「預演世界」嘅數字，唔係真實世界（否則預覽係假嘅）
 	var shown = pv.world if (previewing and pv != null) else lm.world
 	var lines: Array = [
-		["TIME LOOP AUTOMATION", 16, Color(0.85, 0.9, 1.0)],
+		["TIME LOOP AUTOMATION", 20, Color(0.85, 0.9, 1.0)],
 		["", 10, Color.WHITE],
-		["LOOP %d / %d%s%s" % [lm.loop_index + 1, K.LOOP_LIMIT, "  (預演)" if previewing else "", "   ⏩%dx" % int(ff_mult) if fast_forward else ""], 17, Color(1, 1, 1)],
-		["剩餘 %.1fs" % remain, 15, Color(0.8, 0.85, 0.95)],
-		["交貨 %d / %d" % [shown.delivered, K.WIN_TARGET], 15, Color(1, 0.9, 0.6) if shown.delivered < K.WIN_TARGET else Color(0.5, 1, 0.6)],
-		["AP %d / %d%s" % [lm.ap_available(), K.AP_MAX, "  (建造中)" if busy > 0 else ""], 15, Color(0.8, 0.85, 0.95)],
-		["幽靈 %d / 上限 %s" % [lm.active.size(), _quota_text()], 15, Color(0.6, 0.8, 1.0)],
+		["LOOP %d / %d%s%s" % [lm.loop_index + 1, K.LOOP_LIMIT, "  (預演)" if previewing else "", "   ⏩%dx" % int(ff_mult) if fast_forward else ""], 21, Color(1, 1, 1)],
+		["剩餘 %.1fs" % remain, 18, Color(0.8, 0.85, 0.95)],
+		["交貨 %d / %d" % [shown.delivered, K.WIN_TARGET], 18, Color(1, 0.9, 0.6) if shown.delivered < K.WIN_TARGET else Color(0.5, 1, 0.6)],
+		["AP %d / %d%s%s" % [lm.ap_available(), K.AP_MAX, _regen_text(), "  (建造中)" if busy > 0 else ""], 18, Color(0.8, 0.85, 0.95)],
+		["幽靈 %d / 上限 %s" % [lm.active.size(), _quota_text()], 18, Color(0.6, 0.8, 1.0)],
 		["", 10, Color.WHITE],
-		["[1]礦 [2]帶 [3]爐 [4]齒 [5]組 [6]出口", 11, Color(1, 1, 1, 0.55)],
-		["點選單或用 1–6 選建築", 13, Color(1, 1, 1, 0.55)],
-		["滾輪切換建築   [Q/E] 轉向", 13, Color(1, 1, 1, 0.55)],
-		["左鍵放  右鍵拆", 13, Color(1, 1, 1, 0.55)],
-		["[SHIFT] 預演  [SPACE] 暫停  [ENTER] 快進", 12, Color(1, 1, 1, 0.55)],
-		["拆自己會退 AP；拆幽靈要 2 AP", 11, Color(1, 1, 1, 0.4)],
+		["[1]礦 [2]帶 [3]爐 [4]齒 [5]組 [6]出口", 14, Color(1, 1, 1, 0.55)],
+		["點選單或用 1–6 選建築", 15, Color(1, 1, 1, 0.55)],
+		["滾輪切換建築   [Q/E] 轉向（指住已放嘅建築 = 就地改）", 13, Color(1, 1, 1, 0.55)],
+		["左鍵放  右鍵拆", 15, Color(1, 1, 1, 0.55)],
+		["[SHIFT] 預演  [SPACE] 暫停  [ENTER] 快進  [R] 重來×2", 13, Color(1, 1, 1, 0.55)],
+		["拆自己會退 AP；拆幽靈要 2 AP", 13, Color(1, 1, 1, 0.4)],
+		["按住 SHIFT 拖下面時間軸 = 預演", 13, Color(1, 1, 1, 0.4)],
 	]
 	for line in lines:
 		var txt: String = line[0]
@@ -562,8 +737,8 @@ func _draw_end_loop_button(font: Font) -> void:
 		label = "⏩ 快進中 %dx（再按取消）" % int(ff_mult)
 	elif ap_zero:
 		label = "⏩ AP 用晒 — 快進至結束"
-	draw_string(font, eb.position + Vector2(12, 23), label,
-		HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(1, 0.95, 0.8) if (ap_zero or fast_forward) else Color(1, 1, 1, 0.85))
+	draw_string(font, eb.position + Vector2(14, 26), label,
+		HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(1, 0.95, 0.8) if (ap_zero or fast_forward) else Color(1, 1, 1, 0.85))
 	draw_string(font, eb.position + Vector2(eb.size.x - 60.0, 23), "[ENTER]",
 		HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(1, 1, 1, 0.5))
 
@@ -631,6 +806,39 @@ func _draw_end(font: Font) -> void:
 		draw_string(font, r.position + Vector2(16, 76), "%d 個 loop 內差 %d 件（最後一輪交貨 %d）" % [K.LOOP_LIMIT, K.WIN_TARGET - lm.world.delivered, last_loop_delivered], HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(1, 1, 1, 0.85))
 	draw_string(font, r.position + Vector2(16, 112), "[R] 重來", HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(0.7, 0.9, 1.0))
 
+## 用邊張貼圖（含動畫格）
+func _tex_key(b, tick: int) -> String:
+	match b.type:
+		K.T_MINER: return "buildings/miner"
+		K.T_FURNACE: return "buildings/furnace_" + ("a" if (tick / 8) % 2 == 0 else "b")
+		K.T_GEAR: return "buildings/gear"
+		K.T_ASSEMBLER: return "buildings/assembler"
+		K.T_SINK: return "buildings/sink"
+		K.T_BELT:
+			var dirs := ["n", "e", "s", "w"]
+			var frame := "a" if (tick / 6) % 2 == 0 else "b"
+			return "buildings/belt_%s_%s" % [dirs[b.dir], frame]
+	return ""
+
+## 選單用嘅貼圖（傳送帶用向東嘅第一格）
+func _slot_tex(t: int) -> String:
+	match t:
+		K.T_MINER: return "buildings/miner"
+		K.T_BELT: return "buildings/belt_e_a"
+		K.T_FURNACE: return "buildings/furnace_a"
+		K.T_GEAR: return "buildings/gear"
+		K.T_ASSEMBLER: return "buildings/assembler"
+		K.T_SINK: return "buildings/sink"
+	return ""
+
+func _item_tex(item: int) -> String:
+	match item:
+		K.ITEM_ORE: return "items/ore"
+		K.ITEM_INGOT: return "items/ingot"
+		K.ITEM_GEAR: return "items/gear"
+		K.ITEM_PART: return "items/part"
+	return ""
+
 func _color_for(t: int) -> Color:
 	match t:
 		K.T_MINER:     return Color(0.85, 0.55, 0.25)
@@ -649,11 +857,12 @@ func _item_color(item: int) -> Color:
 		K.ITEM_PART:  return Color(0.55, 1.0, 0.65)
 	return Color.WHITE
 
-func _draw_arrow(b, r: Rect2) -> void:
+func _draw_arrow(b, r: Rect2, mod: Color = Color.WHITE) -> void:
 	var c := r.get_center()
 	var d: Vector2 = K.DIR_VEC[b.dir]
 	var tip := c + d * (CELL * 0.26)
 	var l := Vector2(-d.y, d.x) * (CELL * 0.12)
-	draw_line(c - d * 2.0, tip, Color(1, 1, 1, 0.32), 1.2)
-	draw_line(tip, tip - d * 3.5 + l, Color(1, 1, 1, 0.32), 1.2)
-	draw_line(tip, tip - d * 3.5 - l, Color(1, 1, 1, 0.32), 1.2)
+	var ac := Color(1, 1, 1, 0.45 * mod.a)
+	draw_line(c - d * 2.0, tip, ac, 1.2)
+	draw_line(tip, tip - d * 3.5 + l, ac, 1.2)
+	draw_line(tip, tip - d * 3.5 - l, ac, 1.2)
