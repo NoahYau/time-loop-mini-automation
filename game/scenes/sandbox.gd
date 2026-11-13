@@ -20,9 +20,17 @@ const PALETTE_GAP := 6.0
 const PALETTE_COLS := 3            # 1/2/3 一行，4/5/6 下一行
 
 # 結算／規劃面板
-const REPORT_X := 700.0
+## 右邊 HUD 底板（結算面板都要對齊呢個）
+func _panel_box() -> Rect2:
+	return Rect2(Vector2(PANEL_X - 16.0, 16.0), Vector2(1280.0 - PANEL_X - 8.0, 656.0))
+
+func _report_x() -> float:
+	return _panel_box().position.x + 14.0
+
+func _report_w() -> float:
+	return _panel_box().size.x - 28.0
 const REPORT_Y := 320.0
-const REPORT_W := 552.0
+
 const REPORT_ROWS_Y := 78.0
 const REPORT_ROW_H := 21.0
 const PALETTE_TYPES: Array = [1, 2, 3, 4, 5, 6]   # 同 constants.gd 嘅 T_* 一致
@@ -599,14 +607,14 @@ func _draw_hover() -> void:
 		draw_string(ThemeDB.fallback_font, Vector2(r.position.x - 6, r.position.y - 6), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, col2)
 
 func _report_row_rect(i: int) -> Rect2:
-	return Rect2(Vector2(REPORT_X + 10.0, REPORT_Y + REPORT_ROWS_Y + float(i) * REPORT_ROW_H),
-		Vector2(REPORT_W - 20.0, REPORT_ROW_H))
+	return Rect2(Vector2(_report_x() + 10.0, REPORT_Y + REPORT_ROWS_Y + float(i) * REPORT_ROW_H),
+		Vector2(_report_w() - 20.0, REPORT_ROW_H))
 
 func _report_rows_y() -> float:
 	return REPORT_Y + REPORT_ROWS_Y + float(maxi(lm.ghosts.size(), 1)) * REPORT_ROW_H + 12.0
 
 func _report_start_rect() -> Rect2:
-	return Rect2(Vector2(REPORT_X + 10.0, _report_rows_y()), Vector2(REPORT_W - 20.0, 34.0))
+	return Rect2(Vector2(_report_x() + 10.0, _report_rows_y()), Vector2(_report_w() - 20.0, 36.0))
 
 func _report_row_at(pos: Vector2) -> int:
 	for li in range(lm.ghosts.size()):
@@ -701,7 +709,7 @@ func _draw_timeline(font: Font) -> void:
 	draw_string(font, Vector2(x0 + wpx - 4, TL_Y + 14), "%.0fs" % (float(K.LOOP_TICKS) / K.SIM_HZ), HORIZONTAL_ALIGNMENT_RIGHT, -1, 11, Color(1, 1, 1, 0.35))
 
 func _draw_hud(font: Font) -> void:
-	_draw_nine("ui/panel", Rect2(Vector2(PANEL_X - 16.0, 16.0), Vector2(1280.0 - PANEL_X - 8.0, 656.0)), 8.0)
+	_draw_nine("ui/panel", _panel_box(), 8.0)
 	var x := PANEL_X
 	var y := 44.0
 	var left := int(lm.world.tick if not previewing else pv_tick)
@@ -761,24 +769,25 @@ func _draw_end_loop_button(font: Font) -> void:
 
 func _draw_report(font: Font) -> void:
 	var start_btn := _report_start_rect()
-	var panel := Rect2(Vector2(REPORT_X - 8.0, REPORT_Y - 10.0),
-		Vector2(REPORT_W + 16.0, start_btn.end.y - REPORT_Y + 26.0))
+	var pb := _panel_box()
+	var panel := Rect2(Vector2(pb.position.x, REPORT_Y - 14.0),
+		Vector2(pb.size.x, start_btn.end.y - REPORT_Y + 30.0))
 	_draw_nine("ui/panel_light", panel, 8.0)
 
 	var next_quota: int = lm.ghost_quota_for(lm.loop_index + 1)
-	draw_string(font, Vector2(REPORT_X, REPORT_Y + 18.0),
+	draw_string(font, Vector2(_report_x(), REPORT_Y + 18.0),
 		"LOOP %d 結算 — 交貨 %d / %d" % [lm.loop_index + 1, int(report.get("delivered", 0)), K.WIN_TARGET],
 		HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(1, 0.95, 0.7))
-	draw_string(font, Vector2(REPORT_X, REPORT_Y + 42.0),
+	draw_string(font, Vector2(_report_x(), REPORT_Y + 42.0),
 		"幽靈 %d / 上限 %s（下個 loop）・AP 剩 %d" % [lm.active.size(), ("∞" if lm.ghost_cap <= 0 else str(next_quota)), lm.ap_left()],
 		HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.75, 0.85, 1.0))
-	draw_string(font, Vector2(REPORT_X, REPORT_Y + 62.0),
+	draw_string(font, Vector2(_report_x(), REPORT_Y + 62.0),
 		"點擊幽靈切換出動 — 下個 loop 生效", HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(1, 1, 1, 0.45))
 
 	# 用即時狀態（seal_loop 喺結算之後才加新幽靈，所以要即時計）
 	var gs: Array = lm.ghost_report()
 	if gs.is_empty():
-		draw_string(font, Vector2(REPORT_X + 10.0, REPORT_Y + REPORT_ROWS_Y + 14.0),
+		draw_string(font, Vector2(_report_x() + 10.0, REPORT_Y + REPORT_ROWS_Y + 14.0),
 			"未有幽靈（呢個 loop 你一個人做）", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(1, 1, 1, 0.5))
 	for li in range(gs.size()):
 		var info: Dictionary = gs[li]
