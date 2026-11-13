@@ -9,10 +9,10 @@ const K = preload("res://sim/constants.gd")
 const LoopManager = preload("res://sim/loop_manager.gd")
 
 const CELL := 40.0
-const ORIGIN := Vector2(20, 16)
+const ORIGIN := Vector2(20, 44)
 const BUILD_TICKS: int = K.BUILD_TICKS
-const TL_Y := 664.0                # 時間軸
-const TL_H := 18.0
+const TL_Y := 692.0                # 時間軸
+const TL_H := 16.0
 const PANEL_X := 700.0
 const PALETTE_Y := 392.0           # 建築選單頂部
 const PALETTE_BTN := Vector2(104, 58)
@@ -445,7 +445,7 @@ func _draw() -> void:
 
 	if previewing:
 		draw_rect(Rect2(ORIGIN - Vector2(6, 6), Vector2(K.GRID_W * CELL + 12, K.GRID_H * CELL + 12)), Color(0.35, 0.6, 1.0, 0.06))
-		draw_string(font, Vector2(ORIGIN.x, ORIGIN.y - 10), "預演 PREVIEW  t = %.1fs / %.0fs" % [float(pv_tick) / K.SIM_HZ, float(K.LOOP_TICKS) / K.SIM_HZ], HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(0.6, 0.85, 1.0))
+		draw_string(font, Vector2(ORIGIN.x, ORIGIN.y - 12), "預演 PREVIEW  t = %.1fs / %.0fs" % [float(pv_tick) / K.SIM_HZ, float(K.LOOP_TICKS) / K.SIM_HZ], HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(0.6, 0.85, 1.0))
 	if toast_timer > 0.0 and toast != "":
 		var a: float = clampf(toast_timer / 0.6, 0.0, 1.0)
 		var tw: float = font.get_string_size(toast, HORIZONTAL_ALIGNMENT_LEFT, -1, 15).x
