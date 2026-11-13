@@ -59,6 +59,22 @@ game/
 
 穩定版本用 tag 標記（現時：`v0.1-slice`），想回到某個狀態就 `git checkout <tag>`。
 
+### 防止手滑推上 main
+
+repo 有一個 `pre-push` hook：推上 `main` 的 commit 必須已經存在於 `dev`（即係「合併 dev → main」之後才推）。
+在 main 上直接改東西、刪除 main、force-push 分歧的 main 都會被擋。
+
+```powershell
+# 新機安裝 hook
+powershell -ExecutionPolicy Bypass -File tools/install-hooks.ps1
+
+# 真係要硬推（會跳過檢查）
+$env:ALLOW_MAIN_PUSH=1; git push
+
+# 如果 hook 壞咗，暫時停用
+Remove-Item .git/hooks/pre-push
+```
+
 ## 文件
 
 - [DESIGN-SPEC.md](DESIGN-SPEC.md) — 鎖定規則、平衡數字、每次改動嘅原因
