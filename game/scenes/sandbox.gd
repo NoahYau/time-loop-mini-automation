@@ -1,3 +1,4 @@
+@tool
 extends Node2D
 ## S2 可玩切片：滑鼠建造 + 時間軸預演 + 幽靈工作報告。
 ##
@@ -50,6 +51,32 @@ const GHOST_COLORS: Array = [
 const GHOST_TRAIL_LEN: int = 6      # 足跡最多畫幾多個建造格
 
 enum P { RUN, REPORT, WIN, LOSE }
+
+# ---------------------------------------------------------------- 編輯器預覽
+## 呢個 script 係 @tool：喺 Godot 編輯器打開 scenes/sandbox.tscn，2D 視窗就會畫出
+## 成個遊戲畫面（唯讀快照），唔使開遊戲都睇得到／量得到 UI。
+## 下面四個參數只喺編輯器生效 —— 遊戲執行（F5）時完全唔影響模擬。
+@export_group("編輯器預覽 Editor Preview")
+## 關掉 = 變返空白 Node2D（2D 視窗乜都唔畫）。
+@export var editor_preview: bool = true:
+	set(v):
+		editor_preview = v
+		_editor_refresh()
+## 預覽邊個畫面：0 = 遊戲中、1 = 結算、2 = 達標、3 = 時間用完。
+@export_range(0, 3) var editor_phase: int = 0:
+	set(v):
+		editor_phase = v
+		_editor_refresh()
+## 預覽時自動擺一條示範產線（唔擺就係空島）。
+@export var editor_fill_demo: bool = true:
+	set(v):
+		editor_fill_demo = v
+		_editor_refresh()
+## 快照推進到第幾秒（睇得到生產中、帶上面有貨）。
+@export_range(0.0, 60.0, 0.5) var editor_seconds: float = 6.0:
+	set(v):
+		editor_seconds = v
+		_editor_refresh()
 
 var lm
 var phase: int = P.RUN
@@ -150,13 +177,79 @@ func _load_art() -> void:
 
 func _ready() -> void:
 	_load_art()
+	if Engine.is_editor_hint():
+		# 編輯器：只畫唯讀快照，唔跑模擬、唔收輸入。
+		_editor_refresh()
+		return
 	lm = LoopManager.new()
 	lm.start_level()
 	started = true
 
+# ---------------------------------------------------------------- 編輯器快照
+
+## 參數一改就喺編輯器重建快照。遊戲執行時係 no-op（唔會拖慢 / 影響邏輯）。
+func _editor_refresh() -> void:
+	if not Engine.is_editor_hint() or not is_inside_tree():
+		return
+	if editor_preview:
+		_rebuild_preview()
+	else:
+		lm = null
+	queue_redraw()
+
+## 砌一份「唯讀」狀態：玩家同幽靈都係用返真規則跑出嚟，
+## 但唔會經 _process、唔會累積時間，所以編輯器畫面係靜止嘅。
+func _rebuild_preview() -> void:
+	previewing = false
+	pv = null
+	pv_tick = 0
+	flash.clear()
+	deny.clear()
+	busy = 0
+	fast_forward = false
+	restart_armed = false
+	restart_arm_timer = 0.0
+	toast = ""
+	toast_timer = 0.0
+	mouse_pos = Vector2(-1, -1)
+	hover = Vector2i(-1, -1)
+	started = true
+	total_delivered = 0
+	loops_used = 0
+	report = {}
+	phase = P.RUN
+	lm = LoopManager.new()
+	lm.start_level()
+	if editor_fill_demo:
+		_preview_run_loop(0)
+		if editor_phase != 0:
+			# LOOP 2：舊 loop 變成幽靈重播（結算畫面先有幽靈列表可以睇）
+			lm.seal_loop()
+			lm.begin_loop(1)
+			_preview_run_loop(1)
+	match editor_phase:
+		1:
+			_end_loop(false)                     # -> 結算
+		2:
+			lm.world.delivered = K.WIN_TARGET
+			_end_loop(true)                      # -> 達標
+		3:
+			lm.loop_index = K.LOOP_LIMIT - 1
+			_end_loop(false)                     # -> 時間用完
+	queue_redraw()
+
+## 預覽用：擺一條示範產線，再跑 editor_seconds 秒。
+func _preview_run_loop(lane: int) -> void:
+	debug_build_line(int(K.ORE_LANES[lane % K.ORE_LANES.size()]))
+	var target: int = clampi(int(editor_seconds * float(K.SIM_HZ)), 1, K.LOOP_TICKS)
+	while lm.world.tick < target:
+		lm.step()
+
 # ---------------------------------------------------------------- 主循環
 
 func _process(delta: float) -> void:
+	if Engine.is_editor_hint():
+		return
 	if toast_timer > 0.0:
 		toast_timer -= delta
 	if restart_arm_timer > 0.0:
@@ -441,6 +534,8 @@ func debug_build_line(y: int) -> int:
 # ---------------------------------------------------------------- 繪圖
 
 func _draw() -> void:
+	if lm == null:
+		return
 	var font := ThemeDB.fallback_font
 	var w = pv.world if (previewing and pv != null) else lm.world
 
@@ -570,6 +665,16 @@ func _draw() -> void:
 		_draw_report(font)
 	if phase == P.WIN or phase == P.LOSE:
 		_draw_end(font)
+	if Engine.is_editor_hint():
+		_draw_editor_badge(font)
+
+## 編輯器提示條：講清楚而家見到嘅係唯讀快照，同埋參數喺邊度改。
+func _draw_editor_badge(font: Font) -> void:
+	var txt := "編輯器預覽（唯讀快照）— Inspector ▸ Editor Preview 改狀態，F5 遊玩"
+	var tw: float = font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
+	var p := Vector2(ORIGIN.x, 24.0)
+	draw_rect(Rect2(p + Vector2(-6, -14), Vector2(tw + 12, 20)), Color(0.05, 0.08, 0.12, 0.78))
+	draw_string(font, p, txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.75, 0.88, 1.0, 0.92))
 
 func _ghost_pos(li: int, t: int) -> Vector2i:
 	if li >= lm.ghosts.size():

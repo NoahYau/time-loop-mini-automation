@@ -49,6 +49,11 @@ res://
 
 > 注意：根目錄仲有個 `demo/`，係早期 godot-bridge 嘅 hello-world，唔係遊戲本體。
 
+> **想喺編輯器睇 UI**：`sandbox.tscn` 個 script 係 `@tool`，雙擊打開就會喺 2D 視窗畫出成個遊戲畫面。
+> Inspector ▸ **Editor Preview** 可以切換「遊戲中／結算／達標／時間用完」、自動擺示範產線、推進到第幾秒。
+> 不過所有 UI 都係 `_draw()` 即時繪製（唔係 Control node），所以係**唯讀快照**：睇得到但拖唔到，
+> 改版面仍然係改 `sandbox.gd`。詳見 [CODE-GUIDE.md](CODE-GUIDE.md) 11.1。
+
 ## 執行
 
 ```powershell

@@ -493,3 +493,31 @@ powershell -ExecutionPolicy Bypass -File tools/open-game.ps1
 
 > 喺 **DSH（AI 環境）** 就唔可以用 shell 直接開 Godot（sandbox 會擋 `user://` 寫入 → signal 11），
 > 一定要經 `godot_run_project` / `godot_run_headless` / `godot_validate_script` 呢類工具。
+
+### 11.1 喺編輯器直接睇 UI（唔使開遊戲）
+
+`scenes/sandbox.tscn` 嘅 script 係 `@tool`：喺編輯器**雙擊 `scenes/sandbox.tscn`**，2D 視窗就會畫出成個遊戲畫面。
+2D 視窗太細就滾輪縮細／用 View 選單嘅縮放。
+
+所有 UI（HUD、建築選單、結算同勝敗面板、時間軸）都係 `sandbox._draw()` 用 `draw_*()` 即時畫，
+**唔係 Control node**，所以編輯器入面見到嘅係**唯讀快照**：睇得到、量得到位置，
+但唔可以好似普通 UI 咁拖拽／揀中個別元件 —— 改版面仍然係改 `sandbox.gd` 嘅常數（見 9.5）。
+
+Inspector ▸ **Editor Preview**：
+
+| 參數 | 作用 |
+| --- | --- |
+| `editor_preview` | 關掉 → 2D 視窗空白（想淨係睇 code 時用） |
+| `editor_phase` | `0` 遊戲中 / `1` 結算 / `2` 達標 / `3` 時間用完 |
+| `editor_fill_demo` | 自動擺一條示範產線（唔擺就係空島） |
+| `editor_seconds` | 快照推進到第幾秒（預設 6s：帶上面有貨、爐有進度條） |
+
+呢四個參數只喺編輯器生效：`_editor_refresh()` / `_rebuild_preview()` 都有 `Engine.is_editor_hint()` 閘，
+`_process()` 喺編輯器第一行就 return，所以 **F5 執行時完全唔會行到，亦唔會影響模擬**（T1–T16 照過）。
+
+快照係用真規則跑出嚟（`debug_build_line()` 擺線 → `lm.step()` 推進 → `_end_loop()` 出結算），
+所以同真遊戲畫面一模一樣；只係唔會累積時間，所以係靜止嘅。
+
+> 想真正「用滑鼠拖 UI」→ 要將 `_draw()` 入面嘅面板拆成 `Control` scene（HUD / 結算面板各自一個 `.tscn`），
+> 呢個係獨立重構，未做。現階段用編輯器快照 + 改 `sandbox.gd` 數值係最低風險做法。
+> 參考圖：`test_screenshot/editor_preview_run.png`、`editor_preview_report.png`。
