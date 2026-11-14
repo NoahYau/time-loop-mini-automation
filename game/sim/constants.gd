@@ -65,8 +65,8 @@ const AP_COST_BUILD: int = 1
 const AP_COST_DEMOLISH_OWN: int = 1
 const AP_COST_DEMOLISH_GHOST: int = 2
 # 就地旋轉：轉自己嘅免費（等於原本「拆+建」淨 0 AP，但唔使兩步）；
-# 轉幽靈嘅要 2 AP（同拆佢一樣，但你保留建築）。
-const AP_COST_ROTATE_GHOST: int = 2
+# 轉幽靈嘅要 1 AP：比「拆佢（2 AP）再重建」便宜，但仍然要為改動別人嘅設計付出代價。
+const AP_COST_ROTATE_GHOST: int = 1
 # 拆自己今個 loop 起嘅建築：退返 1 AP（即係搬位/改位淨成本 0）。
 # 拆幽靈嘅建築冇退款 —— 果 2 AP 代表「你要重做佢做過嘅嘢」，唔係消費。
 const AP_REFUND_DEMOLISH_OWN: int = 1

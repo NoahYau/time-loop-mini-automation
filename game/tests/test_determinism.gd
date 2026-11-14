@@ -611,7 +611,7 @@ func _test_rotate() -> void:
 	var ap_b0: int = b.ap_left()
 	var ok_b: bool = b.submit_rotate(cell, K.D_S)
 	b.step()
-	_check("轉幽靈嘅建築要 2 AP",
+	_check("轉幽靈嘅建築要 %d AP" % K.AP_COST_ROTATE_GHOST,
 		ok_b and int(b.world.building_at(cell).dir) == K.D_S
 			and b.ap_left() == ap_b0 - K.AP_COST_ROTATE_GHOST,
 		"ok=%s ap=%d dir=%d" % [ok_b, b.ap_left(), int(b.world.building_at(cell).dir)])

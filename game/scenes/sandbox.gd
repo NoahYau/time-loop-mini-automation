@@ -35,6 +35,20 @@ const REPORT_ROWS_Y := 78.0
 const REPORT_ROW_H := 21.0
 const PALETTE_TYPES: Array = [1, 2, 3, 4, 5, 6]   # 同 constants.gd 嘅 T_* 一致
 
+## 幽靈身份色（8 色循環）：建築格底條、幽靈本體、足跡、時間軸、結算列表共用同一套。
+## 純繪製用，唔影響模擬（模擬仍然只認 origin 呢個 loop 編號）。
+const GHOST_COLORS: Array = [
+	Color(0.45, 0.70, 1.00),   # 藍
+	Color(0.42, 0.90, 0.72),   # 薄荷
+	Color(1.00, 0.80, 0.42),   # 琥珀
+	Color(1.00, 0.62, 0.55),   # 珊瑚
+	Color(0.74, 0.62, 1.00),   # 紫
+	Color(0.96, 0.62, 0.86),   # 粉
+	Color(0.68, 0.90, 0.45),   # 青檸
+	Color(0.90, 0.92, 0.98),   # 白
+]
+const GHOST_TRAIL_LEN: int = 6      # 足跡最多畫幾多個建造格
+
 enum P { RUN, REPORT, WIN, LOSE }
 
 var lm
@@ -485,7 +499,7 @@ func _draw() -> void:
 		var r := Rect2(ORIGIN + Vector2(cell) * CELL, Vector2(CELL, CELL))
 		var key := _tex_key(b, w.tick)
 		var ghost: bool = b.origin < lm.loop_index
-		var mod := Color(1, 1, 1, 0.55) if ghost else Color(1, 1, 1, 1)
+		var mod := Color(1, 1, 1, 0.62) if ghost else Color(1, 1, 1, 1)
 		# 落地陰影，令建築唔會「浮」喺地面
 		draw_rect(Rect2(r.position + Vector2(1.5, 2.0), r.size), Color(0, 0, 0, 0.22))
 		if art.has(key):
@@ -494,6 +508,12 @@ func _draw() -> void:
 			var col := _color_for(b.type)
 			col.a = mod.a
 			draw_rect(r, col)
+		if ghost:
+			# 幽靈身份色：格底 3px 幼條（貼圖保持白色只調 alpha，唔會令像素圖變濁）。
+			# 玩家自己嘅建築唔畫 —— 有條 = 過去嘅你起嘅。
+			var gc := _ghost_color(b.origin)
+			draw_rect(Rect2(r.position + Vector2(2.0, r.size.y - 4.0), Vector2(r.size.x - 4.0, 3.0)),
+				Color(gc.r, gc.g, gc.b, 0.85))
 		if flash.has(idx) and not previewing:
 			draw_rect(r.grow(1.0), Color(1, 1, 1, float(flash[idx])))
 		if deny.has(idx) and not previewing:
@@ -506,19 +526,31 @@ func _draw() -> void:
 				draw_circle(r.get_center(), 4.6, _item_color(b.item))
 		if b.type == K.T_FURNACE:
 			var frac := clampf(float(b.progress) / float(K.SMELT_TICKS), 0.0, 1.0)
-			draw_rect(Rect2(r.position + Vector2(0, r.size.y - 3), Vector2(r.size.x * frac, 3)), Color(1, 1, 1, 0.35))
+			# 幽靈爐要將進度條抬高 4px，唔好同身份色條疊住
+			var bar_y: float = r.size.y - 3.0 - (4.0 if ghost else 0.0)
+			draw_rect(Rect2(r.position + Vector2(0, bar_y), Vector2(r.size.x * frac, 3)), Color(1, 1, 1, 0.35))
 		if b.type != K.T_BELT:
 			_draw_arrow(b, r, mod)
 
-	# 幽靈位置（佢而家做緊邊一步）
+	# 幽靈：身份色本體 + 建造足跡（邊個幽靈行到邊、幾時落手，一眼睇得出）
 	var look_t: int = pv_tick if previewing else lm.world.tick
 	for li in lm.active:
+		var gc := _ghost_color(int(li))
+		_draw_ghost_trail(int(li), look_t, gc)
 		var gp := _ghost_pos(li, look_t)
 		if gp == Vector2i(-1, -1):
 			continue
 		var p := ORIGIN + Vector2(gp) * CELL + Vector2(CELL, CELL) * 0.5
-		draw_circle(p, 8.0, Color(0.55, 0.75, 1.0, 0.22))
-		draw_circle(p, 3.4, Color(0.78, 0.92, 1.0, 0.9))
+		# 深色底環 + 身份色：無論企喺邊種建築上面都睇得清
+		draw_circle(p, 8.0, Color(gc.r, gc.g, gc.b, 0.20))
+		draw_circle(p, 5.4, Color(0.04, 0.07, 0.11, 0.72))
+		draw_circle(p, 3.6, Color(gc.r, gc.g, gc.b, 0.98))
+		# "#n" 標籤：深色底，唔會同背景／建築顏色撞埋
+		var tag := "#%d" % (int(li) + 1)
+		var tw: float = font.get_string_size(tag, HORIZONTAL_ALIGNMENT_LEFT, -1, 10).x
+		var tp := p + Vector2(9.0, -7.0)
+		draw_rect(Rect2(tp + Vector2(-2.0, -9.0), Vector2(tw + 4.0, 12.0)), Color(0.03, 0.05, 0.09, 0.70))
+		draw_string(font, tp, tag, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color(gc.r, gc.g, gc.b, 1.0))
 
 	if not previewing:
 		_draw_hover()
@@ -549,6 +581,34 @@ func _ghost_pos(li: int, t: int) -> Vector2i:
 			break
 		found = Vector2i(int(cmd["x"]), int(cmd["y"]))
 	return found
+
+## 第 li 個 loop 嘅幽靈身份色（8 色循環）。純顯示用，唔影響模擬。
+func _ghost_color(li: int) -> Color:
+	if GHOST_COLORS.is_empty():
+		return Color(0.55, 0.75, 1.0)
+	return GHOST_COLORS[((li % GHOST_COLORS.size()) + GHOST_COLORS.size()) % GHOST_COLORS.size()]
+
+## 幽靈最近幾個建造格嘅淡色足跡（由舊到新漸亮），顯示佢行進方向。
+func _draw_ghost_trail(li: int, look_t: int, gc: Color) -> void:
+	if li < 0 or li >= lm.ghosts.size():
+		return
+	var log: Array = lm.ghosts[li]
+	var cells: Array = []
+	for i in range(log.size() - 1, -1, -1):
+		if int(log[i]["t"]) > look_t:
+			continue
+		cells.push_front(Vector2i(int(log[i]["x"]), int(log[i]["y"])))
+		if cells.size() >= GHOST_TRAIL_LEN:
+			break
+	var n: int = cells.size()
+	if n <= 1:
+		return
+	# 格仔左上角細色塊 = 幽靈最近做過嘅格（越新越大越實）。放角落，唔會蓋住機器圖案變成一撻污漬。
+	for i in range(n):
+		var t01: float = float(i) / float(n - 1)
+		var s: float = 4.0 + 3.0 * t01
+		var c: Vector2 = ORIGIN + Vector2(cells[i]) * CELL + Vector2(3.0, 3.0)
+		draw_rect(Rect2(c, Vector2(s, s)), Color(gc.r, gc.g, gc.b, 0.20 + 0.22 * t01))
 
 func _draw_palette(font: Font) -> void:
 	var names := {
@@ -694,12 +754,13 @@ func _draw_timeline(font: Font) -> void:
 	var x0 := ORIGIN.x
 	var wpx := K.GRID_W * CELL
 	draw_rect(Rect2(Vector2(x0, TL_Y), Vector2(wpx, TL_H)), Color(1, 1, 1, 0.06))
-	# 幽靈命令位置（睇得到邊個幽靈幾時落手）
+	# 幽靈命令位置（睇得到邊個幽靈幾時落手；顏色同棋盤格底條一致）
 	for li in lm.active:
 		var log: Array = lm.ghosts[li]
+		var gc := _ghost_color(int(li))
+		var c := Color(gc.r, gc.g, gc.b, 0.55)
 		for cmd in log:
 			var fx: float = float(int(cmd["t"])) / float(K.LOOP_TICKS) * wpx
-			var c := Color(0.55, 0.75, 1.0, 0.45) if li % 2 == 0 else Color(0.75, 0.85, 1.0, 0.45)
 			draw_line(Vector2(x0 + fx, TL_Y + 2), Vector2(x0 + fx, TL_Y + TL_H - 2), c, 1.0)
 	# 已過時間
 	var cur: int = pv_tick if previewing else lm.world.tick
@@ -796,14 +857,18 @@ func _draw_report(font: Font) -> void:
 		var hovered: bool = r.has_point(mouse_pos) and not _report_start_rect().has_point(mouse_pos)
 		if on or hovered:
 			_draw_nine("ui/row", r, 4.0, Color(1, 1, 1, 1.0 if on else 0.6))
-		var box := Rect2(r.position + Vector2(6, 4), Vector2(13, 13))
+		var box := Rect2(r.position + Vector2(9, 4), Vector2(13, 13))
+		# 身份色 chip：同棋盤格底條、幽靈本體同一隻色
+		var gc := _ghost_color(li)
+		draw_rect(Rect2(r.position + Vector2(2, 4), Vector2(3, 13)),
+			Color(gc.r, gc.g, gc.b, 0.9 if on else 0.35))
 		draw_rect(box, Color(0.35, 0.75, 0.50) if on else Color(1, 1, 1, 0.10))
 		if on:
 			draw_line(box.position + Vector2(3, 7), box.position + Vector2(6, 10), Color(1, 1, 1, 0.9), 1.6)
 			draw_line(box.position + Vector2(6, 10), box.position + Vector2(10, 4), Color(1, 1, 1, 0.9), 1.6)
 		var state := "出動" if on else "待命"
 		var col := Color(0.8, 0.95, 1.0) if on else Color(1, 1, 1, 0.4)
-		draw_string(font, r.position + Vector2(28, 15),
+		draw_string(font, r.position + Vector2(31, 15),
 			"#%d  %d 次操作  剩 %d 件  %s" % [li + 1, int(info["actions"]), int(info["standing"]), state],
 			HORIZONTAL_ALIGNMENT_LEFT, -1, 12, col)
 
